@@ -1,0 +1,9 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  illustrator_name: MyString
+  shot_at: 2026-02-22 08:41:42
+
+two:
+  illustrator_name: MyString
+  shot_at: 2026-02-22 08:41:42

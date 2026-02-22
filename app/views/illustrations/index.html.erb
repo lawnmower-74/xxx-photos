@@ -1,0 +1,14 @@
+<p style="color: green"><%= notice %></p>
+
+<h1>Illustrations</h1>
+
+<div id="illustrations">
+  <% @illustrations.each do |illustration| %>
+    <%= render illustration %>
+    <p>
+      <%= link_to "Show this illustration", illustration %>
+    </p>
+  <% end %>
+</div>
+
+<%= link_to "New illustration", new_illustration_path %>
