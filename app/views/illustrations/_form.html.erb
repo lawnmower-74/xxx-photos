@@ -1,0 +1,30 @@
+<%= form_with(model: illustration) do |form| %>
+  <% if illustration.errors.any? %>
+    <div style="color: red">
+      <h2><%= pluralize(illustration.errors.count, "error") %> prohibited this illustration from being saved:</h2>
+      <ul>
+        <% illustration.errors.each do |error| %>
+          <li><%= error.full_message %></li>
+        <% error.full_message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div>
+    <%= form.label :illustrator_name, "イラストレーター名", style: "display: block" %>
+    <%= form.text_field :illustrator_name %>
+  </div>
+
+  <div style="margin-top: 20px;">
+    <%= form.label :images, "イラスト画像（複数選択可）", style: "display: block" %>
+    <%# multiple: true で複数選択を可能に、accept で画像のみに制限 %>
+    <%= form.file_field :images, multiple: true, accept: "image/*" %>
+  </div>
+
+  <%# 撮影日時(shot_at)の入力欄は、自動取得にするので一旦削除またはコメントアウトします %>
+
+  <div style="margin-top: 20px;">
+    <%= form.submit "アップロードする" %>
+  </div>
+<% end %>
