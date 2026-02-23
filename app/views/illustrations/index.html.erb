@@ -25,6 +25,23 @@
   <hr>
 
   <h2>画像一覧</h2>
+  <div style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+    <span>並び替え：</span>
+    <%= link_to "新しい順 (降順)", illustrations_path(sort: 'desc'), class: "sort-link" %> |
+    <%= link_to "古い順 (昇順)", illustrations_path(sort: 'asc'), class: "sort-link" %>
+  </div>
+
+  <style>
+    .sort-link {
+      text-decoration: none;
+      color: #007bff;
+      padding: 5px 10px;
+      border-radius: 4px;
+    }
+    .sort-link:hover {
+      background-color: #e9ecef;
+    }
+  </style>
   <div id="illustration-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px;">
     <% @illustrations.each do |illustration| %>
       <div class="illustration-item" style="border: 1px solid #ddd; border-radius: 4px; overflow: hidden; background: white;">

@@ -3,7 +3,10 @@ class IllustrationsController < ApplicationController
 
   # GET /illustrations or /illustrations.json
   def index
-    @illustrations = Illustration.all
+    # デフォルトは降順（新しい順）
+    direction = params[:sort] == 'asc' ? :asc : :desc
+    
+    @illustrations = Illustration.with_attached_image.order(shot_at: direction)
   end
 
   # GET /illustrations/1 or /illustrations/1.json
