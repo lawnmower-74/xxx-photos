@@ -44,3 +44,7 @@ docker compose up
 docker compose run --rm app bundle install
 
 docker compose run --rm app rails db:migrate:reset
+
+docker compose run --rm app rails db:drop db:create
+
+docker compose run --rm app rails g model Illustrator name:string:uniq

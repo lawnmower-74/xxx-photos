@@ -3,14 +3,24 @@ class IllustrationsController < ApplicationController
 
   # GET /illustrations or /illustrations.json
   def index
-    # デフォルトは降順（新しい順）
-    direction = params[:sort] == 'asc' ? :asc : :desc
-    
-    @illustrations = Illustration.with_attached_image.order(shot_at: direction)
+    @illustrators = Illustrator.all
   end
 
   # GET /illustrations/1 or /illustrations/1.json
   def show
+  end
+
+  def show_by_illustrator
+    # URLの :name パラメータから作者を特定
+    @illustrator = Illustrator.find_by!(name: params[:name])
+    
+    # ソート順の決定
+    direction = params[:sort] == 'asc' ? :asc : :desc
+    
+    # その作者に紐づく画像だけを取得
+    @illustrations = @illustrator.illustrations
+                                  .with_attached_image
+                                  .order(shot_at: direction)
   end
 
   # GET /illustrations/new
@@ -24,37 +34,32 @@ class IllustrationsController < ApplicationController
 
   # POST /illustrations or /illustrations.json
   def create
-    if params[:illustration].blank? || params[:illustration][:image].blank?
-      render json: { error: "画像を選択してください" }, status: :unprocessable_entity
-      return
+    # 1. バリデーション（画像と名前があるか）
+    if params[:illustration].blank? || params[:illustration][:image].blank? || params[:illustration][:illustrator_name].blank?
+      return render json: { error: "画像とイラストレーター名を入力してください" }, status: :unprocessable_entity
     end
   
-    @illustration = Illustration.new(illustration_params)
+    # 2. イラストレーターを探す、または新規作成する (find_or_create_by)
+    illustrator = Illustrator.find_or_create_by!(name: params[:illustration][:illustrator_name])
   
-    # 1. まずは一旦保存する（これでファイルがstorage/の中に書き込まれる）
+    # 3. イラストレーターに紐付けてイラストを作成
+    @illustration = illustrator.illustrations.build(image: params[:illustration][:image])
+  
     if @illustration.save
-      # 2. 保存成功後、ファイルを開いて日時を抽出する
+      # 4. 前に作った exiftool の日時抽出処理
       begin
         @illustration.image.open do |file|
-          # exiftoolで日時を取得
           output = `exiftool -s3 -d "%Y-%m-%d %H:%M:%S" -DateTimeOriginal -CreateDate "#{file.path}"`
           times = output.split("\n").map(&:strip).reject(&:empty?)
-          
-          if times.any?
-            # 3. 日時が取れたら、update_column でその値だけをDBに書き込む
-            # (update_columnを使うとバリデーションをスキップして高速に更新できます)
-            @illustration.update_column(:shot_at, Time.zone.parse(times.first))
-          end
+          @illustration.update_column(:shot_at, Time.zone.parse(times.first)) if times.any?
         end
       rescue => e
         logger.error "Exiftool抽出失敗: #{e.message}"
-        # 抽出に失敗しても、アップロード自体は成功しているのでそのまま進む
       end
-
-      # 4. 最終的な結果をJSONで返す
+  
       render json: {
         url: url_for(@illustration.image),
-        illustrator_name: @illustration.illustrator_name,
+        illustrator_name: illustrator.name, # ここは関連から取得
         shot_at: @illustration.shot_at&.strftime("%Y-%m-%d %H:%M")
       }, status: :created
     else

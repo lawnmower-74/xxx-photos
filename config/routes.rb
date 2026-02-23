@@ -1,11 +1,13 @@
 Rails.application.routes.draw do
+  # イラストレーター（フォルダ）ごとの表示用ルート
+  get 'illustrations/folder/:name', to: 'illustrations#show_by_illustrator', as: :illustrator_folder
+
+  # 基本のリソース（index, create, show, destroyなど）
   resources :illustrations
-  # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 
-  # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
-  # Can be used by load balancers and uptime monitors to verify that the app is live.
+  # アプリのトップページを「フォルダ一覧（index）」に設定
+  root "illustrations#index"
+
+  # デフォルト設定
   get "up" => "rails/health#show", as: :rails_health_check
-
-  # Defines the root path route ("/")
-  # root "posts#index"
 end

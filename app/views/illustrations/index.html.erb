@@ -1,11 +1,12 @@
 <div style="max-width: 1000px; margin: 0 auto; padding: 20px;">
-  <h1>イラスト管理</h1>
+  <h1>イラスト管理 - フォルダ一覧</h1>
 
+  <%# --- アップロードセクション (変更なし) --- %>
   <section style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin-bottom: 40px;">
     <h2>新規一括アップロード</h2>
     <form id="upload-form">
       <div style="margin-bottom: 15px;">
-        <label style="display: block; font-weight: bold;">作者名</label>
+        <label style="display: block; font-weight: bold;">作者名（フォルダ名になります）</label>
         <input type="text" id="illustrator-name" required style="width: 100%; padding: 8px;">
       </div>
 
@@ -22,42 +23,34 @@
     <div id="upload-status" style="margin-top: 15px; font-weight: bold; color: #007bff;"></div>
   </section>
 
-  <hr>
+  <hr style="margin: 40px 0;">
 
-  <h2>画像一覧</h2>
-  <div style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
-    <span>並び替え：</span>
-    <%= link_to "新しい順 (降順)", illustrations_path(sort: 'desc'), class: "sort-link" %> |
-    <%= link_to "古い順 (昇順)", illustrations_path(sort: 'asc'), class: "sort-link" %>
-  </div>
-
-  <style>
-    .sort-link {
-      text-decoration: none;
-      color: #007bff;
-      padding: 5px 10px;
-      border-radius: 4px;
-    }
-    .sort-link:hover {
-      background-color: #e9ecef;
-    }
-  </style>
-  <div id="illustration-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px;">
-    <% @illustrations.each do |illustration| %>
-      <div class="illustration-item" style="border: 1px solid #ddd; border-radius: 4px; overflow: hidden; background: white;">
-        <% if illustration.image.attached? %>
-          <%= image_tag illustration.image, style: "width: 100%; height: 150px; object-fit: cover;" %>
-        <% end %>
-        <div style="padding: 10px;">
-          <p style="margin: 0; font-weight: bold;"><%= illustration.illustrator_name %></p>
-          <p style="margin: 5px 0 0; font-size: 0.8em; color: #666;">
-            <%= illustration.shot_at&.strftime("%Y-%m-%d %H:%M") || "日時不明" %>
-          </p>
+  <%# --- フォルダ一覧セクション --- %>
+  <h2>イラストレーター別フォルダ</h2>
+  <div id="folder-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px; margin-top: 20px;">
+    <% @illustrators.each do |illustrator| %>
+      <%= link_to illustrator_folder_path(name: illustrator.name), class: "folder-item", style: "text-decoration: none; color: inherit;" do %>
+        <div style="border: 1px solid #ddd; padding: 20px; border-radius: 10px; text-align: center; background: white; transition: 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+          <div style="font-size: 50px; margin-bottom: 10px;">📁</div>
+          <div style="font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+            <%= illustrator.name %>
+          </div>
+          <div style="font-size: 12px; color: #888; margin-top: 5px;">
+            <%= illustrator.illustrations.count %> 枚
+          </div>
         </div>
-      </div>
+      <% end %>
     <% end %>
   </div>
 </div>
+
+<style>
+  .folder-item:hover div {
+    transform: translateY(-5px);
+    border-color: #007bff !important;
+    background-color: #f0f7ff !important;
+  }
+</style>
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
@@ -69,7 +62,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const nameInput = document.getElementById("illustrator-name");
     const imageInput = document.getElementById("image-input");
-    const listArea = document.getElementById("illustration-list");
     const status = document.getElementById("upload-status");
     const submitBtn = document.getElementById("submit-btn");
 
@@ -77,14 +69,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const name = nameInput.value;
     const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
-    // ボタンを無効化して連打防止
     submitBtn.disabled = true;
     submitBtn.innerText = "処理中...";
 
-    // 1枚ずつループで送信（これがRackの制限を回避する秘訣！）
     for (let i = 0; i < files.length; i++) {
       status.innerText = `${files.length}枚中 ${i + 1}枚目を送信中...`;
-      status.style.color = "#007bff";
 
       const formData = new FormData();
       formData.append("illustration[illustrator_name]", name);
@@ -97,31 +86,15 @@ document.addEventListener("DOMContentLoaded", () => {
           body: formData
         });
 
-        const result = await response.json(); // JSONを解析
+        const result = await response.json();
 
-        if (response.ok) {
-          // 成功時：リストに画像を追加
-          const html = `
-            <div class="illustration-item" style="...">
-              <img src="${result.url}" style="width: 100%; height: 150px; object-fit: cover;">
-              <div style="padding: 10px;">
-                <p style="margin: 0; font-weight: bold;">${result.illustrator_name}</p>
-                <p style="margin: 5px 0 0; font-size: 0.8em; color: #666;">
-                  ${result.shot_at || "日時不明"}
-                </p>
-              </div>
-            </div>
-          `;
-          listArea.insertAdjacentHTML("afterbegin", html);
-        } else {
-          // サーバー側でエラー（500や422）が起きた場合
-          status.innerText = `エラー発生 (${i + 1}枚目): ${result.error || '保存に失敗しました'}`;
+        if (!response.ok) {
+          status.innerText = `エラー発生: ${result.error || '保存失敗'}`;
           status.style.color = "red";
           submitBtn.disabled = false;
-          return; // ループを中断
+          return;
         }
       } catch (err) {
-        // 通信自体が失敗した場合
         status.innerText = "通信エラーが発生しました";
         status.style.color = "red";
         submitBtn.disabled = false;
@@ -129,18 +102,13 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    status.innerText = "完了しました！";
+    status.innerText = "完了しました！リロードしてフォルダを確認してください。";
     status.style.color = "green";
-    submitBtn.disabled = false;
-    submitBtn.innerText = "アップロード開始";
-    imageInput.value = ""; // ファイル選択をリセット
+    
+    // フォルダ構成が変わるため、完了後に自動リロードするのが一番確実です
+    setTimeout(() => {
+      window.location.reload();
+    }, 1500);
   });
 });
 </script>
-
-<style>
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-</style>

@@ -1,0 +1,54 @@
+<div style="max-width: 1000px; margin: 0 auto; padding: 20px;">
+  <div style="margin-bottom: 20px;">
+    <%= link_to "← フォルダ一覧に戻る", root_path, style: "color: #666; text-decoration: none;" %>
+  </div>
+
+  <h1><%= @illustrator.name %> の作品一覧</h1>
+
+  <%# --- ソートボタン --- %>
+  <div style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px; background: #f8f9fa; padding: 15px; border-radius: 8px;">
+    <span style="font-weight: bold;">撮影日時で並べ替え：</span>
+    <%= link_to "新しい順 (降順)", illustrator_folder_path(name: @illustrator.name, sort: 'desc'), 
+        class: "sort-link #{'active' if params[:sort] != 'asc'}" %>
+    <span style="color: #ccc;">|</span>
+    <%= link_to "古い順 (昇順)", illustrator_folder_path(name: @illustrator.name, sort: 'asc'), 
+        class: "sort-link #{'active' if params[:sort] == 'asc'}" %>
+  </div>
+
+  <%# --- 画像グリッド --- %>
+  <div id="illustration-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px;">
+    <% @illustrations.each do |illustration| %>
+      <div class="illustration-item" style="border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+        <% if illustration.image.attached? %>
+          <%# クリックで画像そのものを開けるようにリンク化 %>
+          <%= link_to url_for(illustration.image), target: "_blank" do %>
+            <%= image_tag illustration.image, style: "width: 100%; height: 200px; object-fit: cover; display: block;" %>
+          <% end %>
+        <% end %>
+        <div style="padding: 12px;">
+          <p style="margin: 0; font-size: 0.85em; color: #555;">
+            📅 <%= illustration.shot_at&.strftime("%Y-%m-%d %H:%M") || "日時不明" %>
+          </p>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<style>
+  .sort-link {
+    text-decoration: none;
+    color: #007bff;
+    padding: 6px 12px;
+    border-radius: 20px;
+    transition: 0.2s;
+  }
+  .sort-link:hover { background-color: #e9ecef; }
+  .sort-link.active {
+    background-color: #007bff;
+    color: white;
+    font-weight: bold;
+  }
+  .illustration-item { transition: transform 0.2s; }
+  .illustration-item:hover { transform: scale(1.02); }
+</style>
