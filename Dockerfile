@@ -1,6 +1,11 @@
 FROM ruby:3.2.2
 
-RUN apt-get update -qq && apt-get install -y build-essential libmariadb-dev curl libvips
+RUN apt-get update -qq && apt-get install -y \
+    build-essential \
+    libmariadb-dev \
+    curl \
+    libvips \
+    exiftool
 
 WORKDIR /app
 

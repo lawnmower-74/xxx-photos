@@ -21,35 +21,41 @@ class IllustrationsController < ApplicationController
 
   # POST /illustrations or /illustrations.json
   def create
-    images = params[:illustration][:images]
-    name = params[:illustration][:illustrator_name]
+    if params[:illustration].blank? || params[:illustration][:image].blank?
+      render json: { error: "画像を選択してください" }, status: :unprocessable_entity
+      return
+    end
   
-    if images.present?
-      images.each do |img|
-        # 1. 新しいレコードのインスタンスを作る
-        @illustration = Illustration.new(illustrator_name: name, image: img)
+    @illustration = Illustration.new(illustration_params)
   
-        # 2. 画像ファイルから Exif 情報を解析して撮影日時を取得
-        begin
-          image_data = MiniMagick::Image.new(img.tempfile.path)
-          # Exifの 'DateTimeOriginal' (撮影日時) を取得
-          exif_date = image_data.exif['DateTimeOriginal']
+    # 1. まずは一旦保存する（これでファイルがstorage/の中に書き込まれる）
+    if @illustration.save
+      # 2. 保存成功後、ファイルを開いて日時を抽出する
+      begin
+        @illustration.image.open do |file|
+          # exiftoolで日時を取得
+          output = `exiftool -s3 -d "%Y-%m-%d %H:%M:%S" -DateTimeOriginal -CreateDate "#{file.path}"`
+          times = output.split("\n").map(&:strip).reject(&:empty?)
           
-          if exif_date
-            # "2024:01:01 12:00:00" という文字列を Rails の日時形式に変換
-            @illustration.shot_at = DateTime.strptime(exif_date, '%Y:%m:%d %H:%M:%S')
+          if times.any?
+            # 3. 日時が取れたら、update_column でその値だけをDBに書き込む
+            # (update_columnを使うとバリデーションをスキップして高速に更新できます)
+            @illustration.update_column(:shot_at, Time.zone.parse(times.first))
           end
-        rescue => e
-          logger.error "Exifの取得に失敗しました: #{e.message}"
-          # 取得に失敗しても画像自体は保存できるように、エラーは握りつぶすかデフォルト値を設定
         end
-  
-        # 3. 保存
-        @illustration.save
+      rescue => e
+        logger.error "Exiftool抽出失敗: #{e.message}"
+        # 抽出に失敗しても、アップロード自体は成功しているのでそのまま進む
       end
-      redirect_to illustrations_path, notice: "アップロードが完了しました！"
+
+      # 4. 最終的な結果をJSONで返す
+      render json: {
+        url: url_for(@illustration.image),
+        illustrator_name: @illustration.illustrator_name,
+        shot_at: @illustration.shot_at&.strftime("%Y-%m-%d %H:%M")
+      }, status: :created
     else
-      # 画像がない場合の処理（省略）
+      render json: { error: @illustration.errors.full_messages.join(", ") }, status: :unprocessable_entity
     end
   end
 
@@ -84,7 +90,30 @@ class IllustrationsController < ApplicationController
 
     # Only allow a list of trusted parameters through.
     def illustration_params
-      # images: [] とすることで、配列形式（複数画像）のデータを受け取れるようにします
-      params.require(:illustration).permit(:illustrator_name, :shot_at, images: [])
+      # JSからは1枚ずつ届くので、images: [] ではなく image 単体で受け取る形にします
+      params.require(:illustration).permit(:illustrator_name, :image)
+    end
+
+    # Exifから日時を抽出
+    def read_shot_at(image)
+      begin
+        # Active Storageの添付ファイルを一時ファイルとして開く
+        image.open do |file|
+          # exiftoolを実行 (-s3で値のみ取得)
+          # 撮影日時(DateTimeOriginal)がなければ作成日時(CreateDate)を取得
+          output = `exiftool -s3 -d "%Y-%m-%d %H:%M:%S" -DateTimeOriginal -CreateDate "#{file.path}"`
+          
+          # 1行ずつ結果を見て、最初に見つかった日時を採用
+          # outputには "2024-02-23 12:34:56\n2024-02-23 12:35:00" のように返ってくる
+          times = output.split("\n").map(&:strip).reject(&:empty?)
+          
+          if times.any?
+            return Time.zone.parse(times.first)
+          end
+        end
+      rescue => e
+        logger.error "Exiftool抽出失敗: #{e.message}"
+      end
+      nil # 何も取れなかったらnil
     end
 end
