@@ -1,14 +1,129 @@
-<p style="color: green"><%= notice %></p>
+<div style="max-width: 1000px; margin: 0 auto; padding: 20px;">
+  <h1>イラスト管理</h1>
 
-<h1>Illustrations</h1>
+  <section style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin-bottom: 40px;">
+    <h2>新規一括アップロード</h2>
+    <form id="upload-form">
+      <div style="margin-bottom: 15px;">
+        <label style="display: block; font-weight: bold;">作者名</label>
+        <input type="text" id="illustrator-name" required style="width: 100%; padding: 8px;">
+      </div>
 
-<div id="illustrations">
-  <% @illustrations.each do |illustration| %>
-    <%= render illustration %>
-    <p>
-      <%= link_to "Show this illustration", illustration %>
-    </p>
-  <% end %>
+      <div style="margin-bottom: 15px;">
+        <label style="display: block; font-weight: bold;">画像選択（複数可）</label>
+        <input type="file" id="image-input" multiple accept="image/*" required>
+      </div>
+
+      <button type="submit" id="submit-btn" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+        アップロード開始
+      </button>
+    </form>
+
+    <div id="upload-status" style="margin-top: 15px; font-weight: bold; color: #007bff;"></div>
+  </section>
+
+  <hr>
+
+  <h2>画像一覧</h2>
+  <div id="illustration-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px;">
+    <% @illustrations.each do |illustration| %>
+      <div class="illustration-item" style="border: 1px solid #ddd; border-radius: 4px; overflow: hidden; background: white;">
+        <% if illustration.image.attached? %>
+          <%= image_tag illustration.image, style: "width: 100%; height: 150px; object-fit: cover;" %>
+        <% end %>
+        <div style="padding: 10px;">
+          <p style="margin: 0; font-weight: bold;"><%= illustration.illustrator_name %></p>
+          <p style="margin: 5px 0 0; font-size: 0.8em; color: #666;">
+            <%= illustration.shot_at&.strftime("%Y-%m-%d %H:%M") || "日時不明" %>
+          </p>
+        </div>
+      </div>
+    <% end %>
+  </div>
 </div>
 
-<%= link_to "New illustration", new_illustration_path %>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const uploadForm = document.getElementById("upload-form");
+  if (!uploadForm) return;
+
+  uploadForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const nameInput = document.getElementById("illustrator-name");
+    const imageInput = document.getElementById("image-input");
+    const listArea = document.getElementById("illustration-list");
+    const status = document.getElementById("upload-status");
+    const submitBtn = document.getElementById("submit-btn");
+
+    const files = imageInput.files;
+    const name = nameInput.value;
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+    // ボタンを無効化して連打防止
+    submitBtn.disabled = true;
+    submitBtn.innerText = "処理中...";
+
+    // 1枚ずつループで送信（これがRackの制限を回避する秘訣！）
+    for (let i = 0; i < files.length; i++) {
+      status.innerText = `${files.length}枚中 ${i + 1}枚目を送信中...`;
+      status.style.color = "#007bff";
+
+      const formData = new FormData();
+      formData.append("illustration[illustrator_name]", name);
+      formData.append("illustration[image]", files[i]);
+
+      try {
+        const response = await fetch("/illustrations", {
+          method: "POST",
+          headers: { "X-CSRF-Token": csrfToken },
+          body: formData
+        });
+
+        const result = await response.json(); // JSONを解析
+
+        if (response.ok) {
+          // 成功時：リストに画像を追加
+          const html = `
+            <div class="illustration-item" style="...">
+              <img src="${result.url}" style="width: 100%; height: 150px; object-fit: cover;">
+              <div style="padding: 10px;">
+                <p style="margin: 0; font-weight: bold;">${result.illustrator_name}</p>
+                <p style="margin: 5px 0 0; font-size: 0.8em; color: #666;">
+                  ${result.shot_at || "日時不明"}
+                </p>
+              </div>
+            </div>
+          `;
+          listArea.insertAdjacentHTML("afterbegin", html);
+        } else {
+          // サーバー側でエラー（500や422）が起きた場合
+          status.innerText = `エラー発生 (${i + 1}枚目): ${result.error || '保存に失敗しました'}`;
+          status.style.color = "red";
+          submitBtn.disabled = false;
+          return; // ループを中断
+        }
+      } catch (err) {
+        // 通信自体が失敗した場合
+        status.innerText = "通信エラーが発生しました";
+        status.style.color = "red";
+        submitBtn.disabled = false;
+        return;
+      }
+    }
+
+    status.innerText = "完了しました！";
+    status.style.color = "green";
+    submitBtn.disabled = false;
+    submitBtn.innerText = "アップロード開始";
+    imageInput.value = ""; // ファイル選択をリセット
+  });
+});
+</script>
+
+<style>
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+</style>
