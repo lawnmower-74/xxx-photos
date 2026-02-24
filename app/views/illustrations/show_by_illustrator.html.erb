@@ -1,8 +1,11 @@
+<%# 1. ページ上部でSpotlight.jsを読み込む %>
+<script src="https://cdn.jsdelivr.net/npm/spotlight.js@0.7.8/dist/spotlight.bundle.js"></script>
+
 <div style="max-width: 1000px; margin: 0 auto; padding: 20px;">
   <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
     <%= link_to "← フォルダ一覧に戻る", root_path, style: "color: #666; text-decoration: none;" %>
     
-    <%# --- 一括削除ボタン（最初は非表示） --- %>
+    <%# --- 一括削除ボタン --- %>
     <button id="bulk-delete-btn" style="display: none; padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">
       選択した項目を削除
     </button>
@@ -12,21 +15,26 @@
 
   <div id="illustration-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px;">
     <% @illustrations.each do |illustration| %>
-      <div class="illustration-item" id="item-<%= illustration.id %>" style="position: relative; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: white;">
+      <div class="illustration-item" id="item-<%= illustration.id %>" style="position: relative; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: white; transition: opacity 0.3s ease;">
         
         <%# --- 選択用チェックボックス --- %>
         <input type="checkbox" class="delete-checkbox" data-id="<%= illustration.id %>" 
                style="position: absolute; top: 10px; left: 10px; z-index: 10; width: 20px; height: 20px; cursor: pointer;">
 
         <% if illustration.image.attached? %>
-          <%= link_to url_for(illustration.image), target: "_blank" do %>
+          <%# --- Spotlight.js用の設定をリンクに追加 --- %>
+          <a href="<%= url_for(illustration.image) %>" 
+             class="spotlight" 
+             data-group="gallery"
+             data-title="<%= illustration.shot_at&.strftime('%Y-%m-%d %H:%M') %>"
+             style="display: block;">
             <%= image_tag illustration.image, style: "width: 100%; height: 200px; object-fit: cover; display: block;" %>
-          <% end %>
+          </a>
         <% end %>
 
         <div style="padding: 10px; display: flex; justify-content: space-between; align-items: center;">
           <span style="font-size: 0.8em; color: #666;">
-            <%= illustration.shot_at&.strftime("%m/%d %H:%M") %>
+            📅 <%= illustration.shot_at&.strftime("%m/%d %H:%M") %>
           </span>
           <%# --- 個別削除ボタン --- %>
           <button class="single-delete-btn" data-id="<%= illustration.id %>" 
@@ -72,7 +80,6 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
       if (response.ok) {
-        // 成功時の処理
         ids.forEach(id => {
           const element = document.getElementById(`item-${id}`);
           if (element) {
@@ -80,22 +87,20 @@ document.addEventListener("DOMContentLoaded", () => {
             setTimeout(() => element.remove(), 300);
           }
         });
-        // ここでエラーが起きていた可能性が高いので、関数の存在を確認して実行
         setTimeout(updateBulkButtonVisibility, 350);
       } else {
         const errorData = await response.json().catch(() => ({}));
         alert("削除に失敗しました: " + (errorData.error || "サーバーエラー"));
       }
     } catch (err) {
-      // 削除自体は成功していても、JSの実行エラーがここで「通信エラー」として表示される
       console.error("JS Error Detail:", err);
-      alert("通信エラー、またはプログラムエラーが発生しました。");
+      alert("エラーが発生しました。");
     }
   };
 
   // --- 3. イベントリスナーの設定 ---
 
-  // チェックボックスの変更を監視
+  // チェックボックスの変更
   document.addEventListener("change", (e) => {
     if (e.target.classList.contains("delete-checkbox")) {
       updateBulkButtonVisibility();
@@ -106,6 +111,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.addEventListener("click", (e) => {
     const btn = e.target.closest(".single-delete-btn");
     if (btn) {
+      e.preventDefault(); // リンク（拡大表示）の発火を防ぐ
       deleteIllustrations([btn.dataset.id]);
     }
   });
