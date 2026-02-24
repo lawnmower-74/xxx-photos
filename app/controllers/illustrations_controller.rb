@@ -80,14 +80,21 @@ class IllustrationsController < ApplicationController
     end
   end
 
-  # DELETE /illustrations/1 or /illustrations/1.json
-  def destroy
-    @illustration.destroy!
-
-    respond_to do |format|
-      format.html { redirect_to illustrations_path, notice: "Illustration was successfully destroyed.", status: :see_other }
-      format.json { head :no_content }
+  # Routesで delete :bulk_destroy としたので、メソッド名も合わせる
+  def bulk_destroy
+    ids = params[:ids]
+    if ids.present? && Illustration.where(id: ids).destroy_all
+      render json: { message: "一括削除に成功しました" }, status: :ok
+    else
+      render json: { error: "削除する項目が選択されていないか、失敗しました" }, status: :unprocessable_entity
     end
+  end
+
+  # 個別削除も残しておく場合（従来通り）
+  def destroy
+    @illustration = Illustration.find(params[:id])
+    @illustration.destroy
+    render json: { message: "削除しました" }, status: :ok
   end
 
   private
