@@ -13,6 +13,15 @@
 
   <h1><%= @illustrator.name %> の作品一覧</h1>
 
+  <div style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px; background: #f8f9fa; padding: 15px; border-radius: 8px;">
+    <span style="font-weight: bold; font-size: 0.9em;">並べ替え：</span>
+    <%= link_to "最新順", illustrator_folder_path(name: @illustrator.name, sort: 'desc'), 
+        class: "sort-link #{'active' if params[:sort] != 'asc'}" %>
+    <span style="color: #ccc;">|</span>
+    <%= link_to "古い順", illustrator_folder_path(name: @illustrator.name, sort: 'asc'), 
+        class: "sort-link #{'active' if params[:sort] == 'asc'}" %>
+  </div>
+
   <div id="illustration-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px;">
     <% @illustrations.each do |illustration| %>
       <div class="illustration-item" id="item-<%= illustration.id %>" style="position: relative; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: white; transition: opacity 0.3s ease;">
