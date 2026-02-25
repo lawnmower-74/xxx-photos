@@ -1,50 +1,49 @@
-# README
+# XXX-Photos
 
-This README would normally document whatever steps are necessary to get the
-application up and running.
+```
+ ██╗  ██╗██╗  ██╗██╗  ██╗    ██████╗ ██╗  ██╗ ██████╗ ████████╗ ██████╗ ███████╗
+ ╚██╗██╔╝╚██╗██╔╝╚██╗██╔╝    ██╔══██╗██║  ██║██╔═══██╗╚══██╔══╝██╔═══██╗██╔════╝
+  ╚███╔╝  ╚███╔╝  ╚███╔╝     ██████╔╝███████║██║   ██║   ██║   ██║   ██║███████╗
+  ██╔██╗  ██╔██╗  ██╔██╗     ██╔═══╝ ██╔══██║██║   ██║   ██║   ██║   ██║╚════██║
+ ██╔╝ ██╗██╔╝ ██╗██╔╝ ██╗    ██║     ██║  ██║╚██████╔╝   ██║   ╚██████╔╝███████║
+ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝    ╚═╝     ╚═╝  ╚═╝ ╚═════╝    ╚═╝    ╚═════╝ ╚══════╝
+```
 
-Things you may want to cover:
+アルバムアプリ  
 
-* Ruby version
+よくわからん理由での垢BAN、あと単に高い(￥)とか、、やだな～から作成  
 
-* System dependencies
+コスト＆パフォーマンスを追いつつ気ままに遊んだり
 
-* Configuration
-
-* Database creation
-
-* Database initialization
-
-* How to run the test suite
-
-* Services (job queues, cache servers, search engines, etc.)
-
-* Deployment instructions
-
-* ...
+---
 
 
-# 実行コマンド
+## コマンド
 
+```bash
 docker compose run --rm app rails new . --force -d mysql --skip-bundle
+```
 
+```bash
 docker compose build
+```
 
-docker compose run --rm app rails db:create
-
-
-docker compose run --rm app rails g scaffold Illustration illustrator_name:string shot_at:datetime
-
-docker compose run --rm app rails active_storage:install
-
-docker compose run --rm app rails db:migrate
-
-docker compose up
-
+```bash
 docker compose run --rm app bundle install
+```
 
+```bash
+docker compose run --rm app rails db:create
+```
+
+```bash
+docker compose run --rm app rails db:migrate
+```
+
+```bash
 docker compose run --rm app rails db:migrate:reset
+```
 
-docker compose run --rm app rails db:drop db:create
-
-docker compose run --rm app rails g model Illustrator name:string:uniq
+```bash
+docker compose up
+```
