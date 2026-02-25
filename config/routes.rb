@@ -1,14 +1,15 @@
 Rails.application.routes.draw do
-  # イラストレーター（フォルダ）ごとの表示用ルート
+  # フォルダ内アクセス（画像一覧表示）
   get 'illustrations/folder/:name', to: 'illustrations#show_by_illustrator', as: :illustrator_folder
 
   resources :illustrations do
     collection do
-      delete :bulk_destroy # /illustrations/bulk_destroy
+      # 画像の選択削除
+      delete :bulk_destroy
     end
   end
 
-  # アプリのトップページを「フォルダ一覧（index）」に設定
+  # トップページ：フォルダ一覧
   root "illustrations#index"
 
   # デフォルト設定

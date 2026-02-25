@@ -1,73 +1,68 @@
 class IllustrationsController < ApplicationController
   before_action :set_illustration, only: %i[ show edit update destroy ]
 
-  # GET /illustrations or /illustrations.json
   def index
+    # ※イラストレーター = フォルダ
     @illustrators = Illustrator.all
   end
 
-  # GET /illustrations/1 or /illustrations/1.json
   def show
   end
 
+  # ==========================================
+  # フォルダ内アクセス（画像一覧表示）
+  # ==========================================
   def show_by_illustrator
-    # URLの :name パラメータから作者を特定
     @illustrator = Illustrator.find_by!(name: params[:name])
-    
-    # ソート順の決定
     direction = params[:sort] == 'asc' ? :asc : :desc
     
-    # その作者に紐づく画像だけを取得
     @illustrations = @illustrator.illustrations
                                   .with_attached_image
                                   .order(shot_at: direction)
   end
 
-  # GET /illustrations/new
   def new
     @illustration = Illustration.new
   end
 
-  # GET /illustrations/1/edit
   def edit
   end
 
-  # POST /illustrations or /illustrations.json
+  # ==========================================
+  # アップロード処理
+  # ==========================================
   def create
-    # 1. バリデーション（画像と名前があるか）
+    # 入力値チェック
     if params[:illustration].blank? || params[:illustration][:image].blank? || params[:illustration][:illustrator_name].blank?
-      return render json: { error: "画像とイラストレーター名を入力してください" }, status: :unprocessable_entity
+      return render json: { error: "フォームに入力してください" }, status: :unprocessable_entity
     end
   
-    # 2. イラストレーターを探す、または新規作成する (find_or_create_by)
+    # イラストレーター（フォルダ）検索／なければ新規作成
     illustrator = Illustrator.find_or_create_by!(name: params[:illustration][:illustrator_name])
   
-    # 3. イラストレーターに紐付けてイラストを作成
+    # イラストレーターの子要素として画像を紐づけ
     @illustration = illustrator.illustrations.build(image: params[:illustration][:image])
   
+    # アップロード（DB・Storageともに）
     if @illustration.save
-      # 4. 前に作った exiftool の日時抽出処理
+      # EXIF情報から「撮影日時」抽出
       begin
         @illustration.image.open do |file|
-          output = `exiftool -s3 -d "%Y-%m-%d %H:%M:%S" -DateTimeOriginal -CreateDate "#{file.path}"`
+          output = `exiftool -s3 -d "%Y-%m-%d %H:%M:%S" -DateTimeOriginal "#{file.path}"`
           times = output.split("\n").map(&:strip).reject(&:empty?)
+          # 「撮影日時」用カラムを更新
           @illustration.update_column(:shot_at, Time.zone.parse(times.first)) if times.any?
         end
       rescue => e
-        logger.error "Exiftool抽出失敗: #{e.message}"
+        logger.error "「撮影日時」取得失敗: #{e.message}"
       end
   
-      render json: {
-        url: url_for(@illustration.image),
-        illustrator_name: illustrator.name, # ここは関連から取得
-        shot_at: @illustration.shot_at&.strftime("%Y-%m-%d %H:%M")
-      }, status: :created
+      render json: { message: "アップロード成功" }, status: :created
     else
       render json: { error: @illustration.errors.full_messages.join(", ") }, status: :unprocessable_entity
     end
   end
 
-  # PATCH/PUT /illustrations/1 or /illustrations/1.json
   def update
     respond_to do |format|
       if @illustration.update(illustration_params)
@@ -80,7 +75,9 @@ class IllustrationsController < ApplicationController
     end
   end
 
-  # Routesで delete :bulk_destroy としたので、メソッド名も合わせる
+  # ==========================================
+  # 画像の個別／選択削除
+  # ==========================================
   def bulk_destroy
     ids = params[:ids]
     if ids.present? && Illustration.where(id: ids).destroy_all
@@ -90,7 +87,6 @@ class IllustrationsController < ApplicationController
     end
   end
 
-  # 個別削除も残しておく場合（従来通り）
   def destroy
     @illustration = Illustration.find(params[:id])
     @illustration.destroy
@@ -98,37 +94,11 @@ class IllustrationsController < ApplicationController
   end
 
   private
-    # Use callbacks to share common setup or constraints between actions.
     def set_illustration
       @illustration = Illustration.find(params[:id])
     end
 
-    # Only allow a list of trusted parameters through.
     def illustration_params
-      # JSからは1枚ずつ届くので、images: [] ではなく image 単体で受け取る形にします
       params.require(:illustration).permit(:illustrator_name, :image)
-    end
-
-    # Exifから日時を抽出
-    def read_shot_at(image)
-      begin
-        # Active Storageの添付ファイルを一時ファイルとして開く
-        image.open do |file|
-          # exiftoolを実行 (-s3で値のみ取得)
-          # 撮影日時(DateTimeOriginal)がなければ作成日時(CreateDate)を取得
-          output = `exiftool -s3 -d "%Y-%m-%d %H:%M:%S" -DateTimeOriginal -CreateDate "#{file.path}"`
-          
-          # 1行ずつ結果を見て、最初に見つかった日時を採用
-          # outputには "2024-02-23 12:34:56\n2024-02-23 12:35:00" のように返ってくる
-          times = output.split("\n").map(&:strip).reject(&:empty?)
-          
-          if times.any?
-            return Time.zone.parse(times.first)
-          end
-        end
-      rescue => e
-        logger.error "Exiftool抽出失敗: #{e.message}"
-      end
-      nil # 何も取れなかったらnil
     end
 end

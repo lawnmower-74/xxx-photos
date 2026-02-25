@@ -1,13 +1,13 @@
 <div style="max-width: 1000px; margin: 0 auto; padding: 20px;">
-  <h1>イラスト管理 - フォルダ一覧</h1>
+  <h1>イラスト管理</h1>
 
-  <%# --- アップロードセクション (変更なし) --- %>
+  <%# --- アップロードセクション --- %>
   <section style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin-bottom: 40px;">
     <h2>新規一括アップロード</h2>
     <form id="upload-form">
       <div style="margin-bottom: 15px;">
-        <label style="display: block; font-weight: bold;">作者名（フォルダ名になります）</label>
-        <input type="text" id="illustrator-name" required style="width: 100%; padding: 8px;">
+        <label style="display: block; font-weight: bold;">フォルダ名</label>
+        <input type="text" id="illustrator-name" required style="width: 90%; padding: 8px;">
       </div>
 
       <div style="margin-bottom: 15px;">
@@ -20,13 +20,14 @@
       </button>
     </form>
 
+    <%# アップロード状況（件数）を表示 %>
     <div id="upload-status" style="margin-top: 15px; font-weight: bold; color: #007bff;"></div>
   </section>
 
   <hr style="margin: 40px 0;">
 
   <%# --- フォルダ一覧セクション --- %>
-  <h2>イラストレーター別フォルダ</h2>
+  <h2>フォルダ一覧</h2>
   <div id="folder-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px; margin-top: 20px;">
     <% @illustrators.each do |illustrator| %>
       <%= link_to illustrator_folder_path(name: illustrator.name), class: "folder-item", style: "text-decoration: none; color: inherit;" do %>
@@ -57,6 +58,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const uploadForm = document.getElementById("upload-form");
   if (!uploadForm) return;
 
+  // 「アップロード開始」ボタンクリック後に実行
   uploadForm.addEventListener("submit", async (e) => {
     e.preventDefault();
 
@@ -65,16 +67,18 @@ document.addEventListener("DOMContentLoaded", () => {
     const status = document.getElementById("upload-status");
     const submitBtn = document.getElementById("submit-btn");
 
-    const files = imageInput.files;
     const name = nameInput.value;
+    const files = imageInput.files;
     const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
     submitBtn.disabled = true;
     submitBtn.innerText = "処理中...";
 
+    // 逐次アップロード
     for (let i = 0; i < files.length; i++) {
       status.innerText = `${files.length}枚中 ${i + 1}枚目を送信中...`;
 
+      // フォーム値取得
       const formData = new FormData();
       formData.append("illustration[illustrator_name]", name);
       formData.append("illustration[image]", files[i]);
@@ -89,7 +93,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const result = await response.json();
 
         if (!response.ok) {
-          status.innerText = `エラー発生: ${result.error || '保存失敗'}`;
+          status.innerText = `エラー発生: ${result.error || 'アップロード失敗'}`;
           status.style.color = "red";
           submitBtn.disabled = false;
           return;
@@ -102,10 +106,10 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    status.innerText = "完了しました！リロードしてフォルダを確認してください。";
+    status.innerText = "アップロード完了！";
     status.style.color = "green";
     
-    // フォルダ構成が変わるため、完了後に自動リロードするのが一番確実です
+    // アップロード完了後にリロード実行（フォルダを自動的に表示するため）
     setTimeout(() => {
       window.location.reload();
     }, 1500);

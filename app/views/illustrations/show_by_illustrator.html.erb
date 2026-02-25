@@ -1,9 +1,9 @@
-<%# 1. ページ上部でSpotlight.jsを読み込む %>
+<%# ギャラリー化ライブラリ %>
 <script src="https://cdn.jsdelivr.net/npm/spotlight.js@0.7.8/dist/spotlight.bundle.js"></script>
 
 <div style="max-width: 1000px; margin: 0 auto; padding: 20px;">
   <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
-    <%= link_to "← フォルダ一覧に戻る", root_path, style: "color: #666; text-decoration: none;" %>
+    <%= link_to "< フォルダ一覧に戻る", root_path, style: "color: #666; text-decoration: none;" %>
     
     <%# --- 一括削除ボタン --- %>
     <button id="bulk-delete-btn" style="display: none; padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">
@@ -13,15 +13,20 @@
 
   <h1><%= @illustrator.name %> の作品一覧</h1>
 
+  <%# --- 並べ替えボタン --- %>
   <div style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px; background: #f8f9fa; padding: 15px; border-radius: 8px;">
     <span style="font-weight: bold; font-size: 0.9em;">並べ替え：</span>
+
     <%= link_to "最新順", illustrator_folder_path(name: @illustrator.name, sort: 'desc'), 
         class: "sort-link #{'active' if params[:sort] != 'asc'}" %>
+
     <span style="color: #ccc;">|</span>
+
     <%= link_to "古い順", illustrator_folder_path(name: @illustrator.name, sort: 'asc'), 
         class: "sort-link #{'active' if params[:sort] == 'asc'}" %>
   </div>
 
+  <%# --- 画像一覧 --- %>
   <div id="illustration-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px;">
     <% @illustrations.each do |illustration| %>
       <div class="illustration-item" id="item-<%= illustration.id %>" style="position: relative; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: white; transition: opacity 0.3s ease;">
@@ -31,7 +36,6 @@
                style="position: absolute; top: 10px; left: 10px; z-index: 10; width: 20px; height: 20px; cursor: pointer;">
 
         <% if illustration.image.attached? %>
-          <%# --- Spotlight.js用の設定をリンクに追加 --- %>
           <a href="<%= url_for(illustration.image) %>" 
              class="spotlight" 
              data-group="gallery"
@@ -42,9 +46,11 @@
         <% end %>
 
         <div style="padding: 10px; display: flex; justify-content: space-between; align-items: center;">
+          <%# --- 撮影日時 --- %>
           <span style="font-size: 0.8em; color: #666;">
             📅 <%= illustration.shot_at&.strftime("%m/%d %H:%M") %>
           </span>
+
           <%# --- 個別削除ボタン --- %>
           <button class="single-delete-btn" data-id="<%= illustration.id %>" 
                   style="background: none; border: none; color: #dc3545; cursor: pointer; font-size: 0.9em;">
@@ -61,7 +67,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const bulkDeleteBtn = document.getElementById("bulk-delete-btn");
   const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
-  // --- 1. 一括削除ボタンの表示・非表示を切り替える関数 ---
+  // 一括削除ボタンの表示・非表示を切り替える
   const updateBulkButtonVisibility = () => {
     const checkedCount = document.querySelectorAll(".delete-checkbox:checked").length;
     if (bulkDeleteBtn) {
@@ -70,14 +76,16 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
-  // --- 2. 削除処理の共通関数 ---
+  // 削除処理（個別／選択共通）
   const deleteIllustrations = async (ids) => {
+    // 確認用ダイアログ表示
     const message = ids.length > 1 
       ? `選択した ${ids.length} 件の画像を完全に削除してもよろしいですか？` 
       : "この画像を削除してもよろしいですか？";
 
     if (!window.confirm(message)) return;
 
+    // 削除リクエスト
     try {
       const response = await fetch("/illustrations/bulk_destroy", {
         method: "DELETE",
@@ -89,6 +97,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
       if (response.ok) {
+        // 画像を画面上からも消す
         ids.forEach(id => {
           const element = document.getElementById(`item-${id}`);
           if (element) {
@@ -96,6 +105,7 @@ document.addEventListener("DOMContentLoaded", () => {
             setTimeout(() => element.remove(), 300);
           }
         });
+        // 一括削除ボタンを非表示に
         setTimeout(updateBulkButtonVisibility, 350);
       } else {
         const errorData = await response.json().catch(() => ({}));
@@ -107,9 +117,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
-  // --- 3. イベントリスナーの設定 ---
+  // ===================================
+  // イベントリスナーの設定
+  // ===================================
 
-  // チェックボックスの変更
+  // チェックボックス
   document.addEventListener("change", (e) => {
     if (e.target.classList.contains("delete-checkbox")) {
       updateBulkButtonVisibility();
@@ -120,7 +132,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.addEventListener("click", (e) => {
     const btn = e.target.closest(".single-delete-btn");
     if (btn) {
-      e.preventDefault(); // リンク（拡大表示）の発火を防ぐ
+      e.preventDefault(); // ※リンク（拡大表示）の発火を防ぐ
       deleteIllustrations([btn.dataset.id]);
     }
   });
