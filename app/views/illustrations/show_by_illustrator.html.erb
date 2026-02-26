@@ -36,12 +36,16 @@
                style="position: absolute; top: 10px; left: 10px; z-index: 10; width: 20px; height: 20px; cursor: pointer;">
 
         <% if illustration.image.attached? %>
-          <a href="<%= url_for(illustration.image) %>" 
+          <a href="<%= url_for(illustration.image) %>" <%# ※拡大表示は原寸大の画像を表示 %>
              class="spotlight" 
              data-group="gallery"
              data-title="<%= illustration.shot_at&.strftime('%Y-%m-%d %H:%M') %>"
              style="display: block;">
-            <%= image_tag illustration.image, style: "width: 100%; height: 200px; object-fit: cover; display: block;" %>
+            <% if illustration.image.attached? %>
+              <%# サムネ表示 %>
+              <%= image_tag illustration.image.variant(resize_to_limit: [300, 300]), 
+                            style: "width: 100%; height: 200px; object-fit: cover; display: block;" %>
+            <% end %>
           </a>
         <% end %>
 

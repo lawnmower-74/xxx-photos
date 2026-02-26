@@ -23,5 +23,11 @@ module App
     #
     # config.time_zone = "Central Time (US & Canada)"
     # config.eager_load_paths << Rails.root.join("extras")
+
+    # サムネ作成用
+    config.active_storage.variant_processor = :vips
+
+    # 非同期処理（Job）を Rails内の別スレッド で並行して実行させる
+    config.active_job.queue_adapter = :async
   end
 end
