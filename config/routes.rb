@@ -13,7 +13,10 @@ Rails.application.routes.draw do
   # フォルダ内　関連
   # ===================================
   # 画像一覧表示
-  get 'illustrations/folder/:name', to: 'illustrations#show_by_illustrator', as: :illustrator_folder
+  get 'illustrations/folder/:name', 
+    to: 'illustrations#show_by_illustrator', 
+    as: :illustrator_folder, 
+    constraints: { name: /[^\/]+/ }
 
   resources :illustrations do
     collection do
