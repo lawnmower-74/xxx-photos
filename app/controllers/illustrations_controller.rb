@@ -45,19 +45,10 @@ class IllustrationsController < ApplicationController
   
     # アップロード（DB・Storageともに）
     if @illustration.save
-      # EXIF情報から「撮影日時」抽出
-      begin
-        @illustration.image.open do |file|
-          output = `exiftool -s3 -d "%Y-%m-%d %H:%M:%S" -DateTimeOriginal "#{file.path}"`
-          times = output.split("\n").map(&:strip).reject(&:empty?)
-          # 「撮影日時」用カラムを更新
-          @illustration.update_column(:shot_at, Time.zone.parse(times.first)) if times.any?
-        end
-      rescue => e
-        logger.error "「撮影日時」取得失敗: #{e.message}"
-      end
+      # 「撮影日時」の抽出・保存を非同期で実行
+      ExtractExifJob.perform_later(@illustration.id)
   
-      render json: { message: "アップロード成功" }, status: :created
+      render json: { message: "アップロード完了（※撮影日時は順次反映されます）" }, status: :created
     else
       render json: { error: @illustration.errors.full_messages.join(", ") }, status: :unprocessable_entity
     end
