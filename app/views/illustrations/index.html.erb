@@ -70,7 +70,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
   // ===================================
-  // アップロード
+  // 並列アップロード
   // ===================================
   if (uploadForm) {
     uploadForm.addEventListener("submit", async (e) => {
@@ -82,19 +82,30 @@ document.addEventListener("DOMContentLoaded", () => {
       const submitBtn = document.getElementById("submit-btn");
 
       const name = nameInput.value;
-      const files = imageInput.files;    
+      const files = Array.from(imageInput.files);
 
       submitBtn.disabled = true;
       submitBtn.innerText = "処理中...";
 
-      // 逐次アップロード
-      for (let i = 0; i < files.length; i++) {
-        status.innerText = `${files.length}枚中 ${i + 1}枚目を送信中...`;
+      // 進捗管理用
+      let completedCount = 0;
+      const totalFiles = files.length;
 
-        // フォーム値取得
+      // ----------------------------------------
+      // 並列上限
+      // ----------------------------------------
+      const CONCURRENCY_LIMIT = 3;
+
+      // ステータス表示を更新する関数
+      const updateStatus = () => {
+        status.innerText = `${totalFiles}枚中 ${completedCount}枚の送信が完了...`;
+      };
+
+      // アップロード処理
+      const uploadSingleFile = async (file) => {
         const formData = new FormData();
         formData.append("illustration[illustrator_name]", name);
-        formData.append("illustration[image]", files[i]);
+        formData.append("illustration[image]", file);
 
         try {
           const response = await fetch("/illustrations", {
@@ -103,21 +114,32 @@ document.addEventListener("DOMContentLoaded", () => {
             body: formData
           });
 
-          const result = await response.json();
-
-          if (!response.ok) {
-            status.innerText = `エラー発生: ${result.error || 'アップロード失敗'}`;
-            status.style.color = "red";
-            submitBtn.disabled = false;
-            return;
-          }
+          if (!response.ok) throw new Error('アップロード失敗'); // -> catchへ
+          
+          completedCount++;
+          updateStatus();
         } catch (err) {
-          status.innerText = "通信エラーが発生しました";
-          status.style.color = "red";
-          submitBtn.disabled = false;
-          return;
+          console.error("アップロード失敗:", err);
+          completedCount++; 
         }
+      };
+
+      // 画像がなくなるまで取り出してアップロード処理へ
+      const worker = async () => {
+        while (files.length > 0) {
+          const file = files.shift(); // 行列の先頭から1枚取り出す
+          if (file) await uploadSingleFile(file);
+        }
+      };
+
+      // 指定した数だけワーカーを同時に起動
+      const workers = [];
+      for (let i = 0; i < Math.min(CONCURRENCY_LIMIT, totalFiles); i++) {
+        workers.push(worker());
       }
+
+      // すべてのワーカーの処理が終わるのを待つ
+      await Promise.all(workers);
 
       status.innerText = "アップロード完了！";
       status.style.color = "green";
