@@ -30,17 +30,28 @@
   <h2>フォルダ一覧</h2>
   <div id="folder-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px; margin-top: 20px;">
     <% @illustrators.each do |illustrator| %>
-      <%= link_to illustrator_folder_path(name: illustrator.name), class: "folder-item", style: "text-decoration: none; color: inherit;" do %>
-        <div style="border: 1px solid #ddd; padding: 20px; border-radius: 10px; text-align: center; background: white; transition: 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-          <div style="font-size: 50px; margin-bottom: 10px;">📁</div>
-          <div style="font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-            <%= illustrator.name %>
+      <div class="folder-container" id="folder-<%= illustrator.name %>" style="position: relative;">
+        
+        <%# 削除ボタン %>
+        <button class="folder-delete-btn" 
+                data-name="<%= illustrator.name %>" 
+                style="position: absolute; top: 5px; right: 5px; background: #ff4d4d; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; z-index: 10; font-size: 14px; display: flex; align-items: center; justify-content: center;"
+                title="フォルダを削除">
+          ×
+        </button>
+
+        <%= link_to illustrator_folder_path(name: illustrator.name), class: "folder-item", style: "text-decoration: none; color: inherit; display: block;" do %>
+          <div style="border: 1px solid #ddd; padding: 20px; border-radius: 10px; text-align: center; background: white; transition: 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+            <div style="font-size: 50px; margin-bottom: 10px;">📁</div>
+            <div style="font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              <%= illustrator.name %>
+            </div>
+            <div style="font-size: 12px; color: #888; margin-top: 5px;">
+              <%= illustrator.illustrations.count %> 枚
+            </div>
           </div>
-          <div style="font-size: 12px; color: #888; margin-top: 5px;">
-            <%= illustrator.illustrations.count %> 枚
-          </div>
-        </div>
-      <% end %>
+        <% end %>
+      </div>
     <% end %>
   </div>
 </div>
@@ -56,63 +67,109 @@
 <script>
 document.addEventListener("DOMContentLoaded", () => {
   const uploadForm = document.getElementById("upload-form");
-  if (!uploadForm) return;
+  const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
-  // 「アップロード開始」ボタンクリック後に実行
-  uploadForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
+  // ===================================
+  // アップロード
+  // ===================================
+  if (uploadForm) {
+    uploadForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
 
-    const nameInput = document.getElementById("illustrator-name");
-    const imageInput = document.getElementById("image-input");
-    const status = document.getElementById("upload-status");
-    const submitBtn = document.getElementById("submit-btn");
+      const nameInput = document.getElementById("illustrator-name");
+      const imageInput = document.getElementById("image-input");
+      const status = document.getElementById("upload-status");
+      const submitBtn = document.getElementById("submit-btn");
 
-    const name = nameInput.value;
-    const files = imageInput.files;
-    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+      const name = nameInput.value;
+      const files = imageInput.files;    
 
-    submitBtn.disabled = true;
-    submitBtn.innerText = "処理中...";
+      submitBtn.disabled = true;
+      submitBtn.innerText = "処理中...";
 
-    // 逐次アップロード
-    for (let i = 0; i < files.length; i++) {
-      status.innerText = `${files.length}枚中 ${i + 1}枚目を送信中...`;
+      // 逐次アップロード
+      for (let i = 0; i < files.length; i++) {
+        status.innerText = `${files.length}枚中 ${i + 1}枚目を送信中...`;
 
-      // フォーム値取得
-      const formData = new FormData();
-      formData.append("illustration[illustrator_name]", name);
-      formData.append("illustration[image]", files[i]);
+        // フォーム値取得
+        const formData = new FormData();
+        formData.append("illustration[illustrator_name]", name);
+        formData.append("illustration[image]", files[i]);
 
-      try {
-        const response = await fetch("/illustrations", {
-          method: "POST",
-          headers: { "X-CSRF-Token": csrfToken },
-          body: formData
-        });
+        try {
+          const response = await fetch("/illustrations", {
+            method: "POST",
+            headers: { "X-CSRF-Token": csrfToken },
+            body: formData
+          });
 
-        const result = await response.json();
+          const result = await response.json();
 
-        if (!response.ok) {
-          status.innerText = `エラー発生: ${result.error || 'アップロード失敗'}`;
+          if (!response.ok) {
+            status.innerText = `エラー発生: ${result.error || 'アップロード失敗'}`;
+            status.style.color = "red";
+            submitBtn.disabled = false;
+            return;
+          }
+        } catch (err) {
+          status.innerText = "通信エラーが発生しました";
           status.style.color = "red";
           submitBtn.disabled = false;
           return;
         }
-      } catch (err) {
-        status.innerText = "通信エラーが発生しました";
-        status.style.color = "red";
-        submitBtn.disabled = false;
-        return;
       }
-    }
 
-    status.innerText = "アップロード完了！";
-    status.style.color = "green";
-    
-    // アップロード完了後にリロード実行（フォルダを自動的に表示するため）
-    setTimeout(() => {
-      window.location.reload();
-    }, 1500);
+      status.innerText = "アップロード完了！";
+      status.style.color = "green";
+      
+      // アップロード完了後にリロード実行（フォルダを自動的に表示するため）
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    });
+  }
+
+  // ===================================
+  // フォルダ削除
+  // ===================================
+  const deleteFolder = async (name) => {
+    if (!window.confirm(`フォルダ「${name}」を削除してもよろしいですか？\n※中の画像もすべて削除されます。`)) return;
+
+    try {
+      const response = await fetch(`/folders/${encodeURIComponent(name)}`, {
+        method: "DELETE",
+        headers: { 
+          "X-CSRF-Token": csrfToken,
+          "Content-Type": "application/json"
+        }
+      });
+
+      if (response.ok) {
+        const element = document.getElementById(`folder-${name}`);
+        if (element) {
+          element.style.transition = "all 0.3s ease";
+          element.style.opacity = "0";
+          element.style.transform = "scale(0.8)";
+          setTimeout(() => element.remove(), 300);
+        }
+      } else {
+        alert("削除に失敗しました。");
+      }
+    } catch (err) {
+      alert("通信エラーが発生しました。");
+    }
+  };
+
+  // 削除ボタンのクリックイベント
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest(".folder-delete-btn");
+    if (btn) {
+      e.stopPropagation(); // フォルダ詳細への遷移を止める
+      e.preventDefault();
+      deleteFolder(btn.dataset.name);
+    }
   });
+
+  
 });
 </script>
