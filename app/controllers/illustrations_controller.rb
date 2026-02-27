@@ -3,7 +3,7 @@ class IllustrationsController < ApplicationController
 
   def index
     # ※イラストレーター = フォルダ
-    @illustrators = Illustrator.all
+    @illustrators = Illustrator.all.includes(:illustrations)
   end
 
   def show
