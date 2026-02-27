@@ -29,7 +29,7 @@
   <%# --- 画像一覧 --- %>
   <div id="illustration-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px;">
     <% @illustrations.each do |illustration| %>
-      <div class="illustration-item" id="item-<%= illustration.id %>" style="position: relative; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: white; transition: opacity 0.3s ease;">
+      <div class="illustration-item" id="item-<%= illustration.id %>" style="position: relative; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: white; transition: all 0.3s ease;">
         
         <%# --- 選択用チェックボックス --- %>
         <input type="checkbox" class="delete-checkbox" data-id="<%= illustration.id %>" 
@@ -106,7 +106,9 @@ document.addEventListener("DOMContentLoaded", () => {
         ids.forEach(id => {
           const element = document.getElementById(`item-${id}`);
           if (element) {
+            element.style.transition = "all 0.3s ease";
             element.style.opacity = "0";
+            element.style.transform = "scale(0.8)";
             setTimeout(() => element.remove(), 300);
           }
         });
