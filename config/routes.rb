@@ -6,7 +6,10 @@ Rails.application.routes.draw do
   # ===================================
   # ファルダ一覧　関連
   # ===================================
-  delete '/folders/:name', to: 'illustrators#destroy', as: :delete_illustrator_folder
+  delete 'folders/:name', 
+       to: 'illustrators#destroy', 
+       as: :delete_illustrator_folder, 
+       constraints: { name: /[^\/]+/ }
 
 
   # ===================================
