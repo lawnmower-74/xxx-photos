@@ -107,8 +107,9 @@ document.addEventListener("DOMContentLoaded", () => {
       const files = Array.from(imageInput.files);
 
       // 進捗管理用
-      let completedCount = 0;
       const totalFiles = files.length;
+      let completedCount = 0;
+      let errorCount = 0;
 
       // ----------------------------------------
       // 並列上限
@@ -120,7 +121,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // ステータス表示を更新する関数
       const updateStatus = () => {
-        status.innerText = `${totalFiles}枚中 ${completedCount}枚の送信が完了...`;
+        let message = `${totalFiles}枚中 ${completedCount}枚の送信が完了...`;
+        
+        if (errorCount > 0) {
+          message += `（うち ${errorCount}枚 失敗）`;
+        }
+        
+        status.innerText = message;
       };
 
       // アップロード処理
@@ -143,7 +150,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         } catch (err) {
           console.error("アップロード失敗: ", err);
-          completedCount++;
+          errorCount++;
           updateStatus();
         }
       };
@@ -166,15 +173,20 @@ document.addEventListener("DOMContentLoaded", () => {
         // すべてのワーカーの処理が終わるのを待つ
         await Promise.all(workers);
   
-        status.innerText = "アップロード完了！";
-        status.style.color = "green";
+        if (errorCount > 0) {
+          status.innerText = `${completedCount}/${totalFiles} 件 アップロード済み`
+          status.style.color = "orange";
+        } else {
+          status.innerText = "正常にアップロードされました！";
+          status.style.color = "green";
+        }
         
         // アップロード完了後にリロード実行（フォルダを自動的に表示するため）
         setTimeout(() => {
           window.location.reload();
-        }, 1500);
+        }, 2000);
 
-      } catch (error) {
+      } catch (err) {
         console.error("システムエラー: ", err);
         alert("システムエラーが発生しました。");
         setSubmitBtnState("idle");
