@@ -67,7 +67,30 @@
 <script>
 document.addEventListener("DOMContentLoaded", () => {
   const uploadForm = document.getElementById("upload-form");
+  const submitBtn = document.getElementById("submit-btn");
   const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+  // アップロードボタンの状態を一括管理する
+  const setSubmitBtnState = (state) => {
+    if (!submitBtn) return;
+
+    switch (state) {
+      case "loading": // アップロード中
+        submitBtn.disabled = true;
+        submitBtn.innerText = "処理中...";
+        submitBtn.style.backgroundColor = "#6c757d";
+        submitBtn.style.cursor = "not-allowed";
+        break;
+
+      case "idle": // 待機状態
+      default:
+        submitBtn.disabled = false;
+        submitBtn.innerText = "アップロード開始";
+        submitBtn.style.backgroundColor = "#007bff";
+        submitBtn.style.cursor = "pointer";
+        break;
+    }
+  };
 
   // ===================================
   // 並列アップロード
@@ -79,13 +102,9 @@ document.addEventListener("DOMContentLoaded", () => {
       const nameInput = document.getElementById("illustrator-name");
       const imageInput = document.getElementById("image-input");
       const status = document.getElementById("upload-status");
-      const submitBtn = document.getElementById("submit-btn");
 
       const name = nameInput.value;
       const files = Array.from(imageInput.files);
-
-      submitBtn.disabled = true;
-      submitBtn.innerText = "処理中...";
 
       // 進捗管理用
       let completedCount = 0;
@@ -95,6 +114,9 @@ document.addEventListener("DOMContentLoaded", () => {
       // 並列上限
       // ----------------------------------------
       const CONCURRENCY_LIMIT = 3;
+
+      // アップロードボタンを「アップロード中」の状態にする
+      setSubmitBtnState("loading");
 
       // ステータス表示を更新する関数
       const updateStatus = () => {
@@ -118,9 +140,11 @@ document.addEventListener("DOMContentLoaded", () => {
           
           completedCount++;
           updateStatus();
+
         } catch (err) {
-          console.error("アップロード失敗:", err);
-          completedCount++; 
+          console.error("アップロード失敗: ", err);
+          completedCount++;
+          updateStatus();
         }
       };
 
@@ -133,21 +157,28 @@ document.addEventListener("DOMContentLoaded", () => {
       };
 
       // 指定した数だけワーカーを同時に起動
-      const workers = [];
-      for (let i = 0; i < Math.min(CONCURRENCY_LIMIT, totalFiles); i++) {
-        workers.push(worker());
+      try {
+        const workers = [];
+        for (let i = 0; i < Math.min(CONCURRENCY_LIMIT, totalFiles); i++) {
+          workers.push(worker());
+        }
+  
+        // すべてのワーカーの処理が終わるのを待つ
+        await Promise.all(workers);
+  
+        status.innerText = "アップロード完了！";
+        status.style.color = "green";
+        
+        // アップロード完了後にリロード実行（フォルダを自動的に表示するため）
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+
+      } catch (error) {
+        console.error("システムエラー: ", err);
+        alert("システムエラーが発生しました。");
+        setSubmitBtnState("idle");
       }
-
-      // すべてのワーカーの処理が終わるのを待つ
-      await Promise.all(workers);
-
-      status.innerText = "アップロード完了！";
-      status.style.color = "green";
-      
-      // アップロード完了後にリロード実行（フォルダを自動的に表示するため）
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
     });
   }
 
