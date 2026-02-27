@@ -148,7 +148,7 @@ document.addEventListener("DOMContentLoaded", () => {
         setBulkDeleteBtnState("idle");
       }
     } catch (err) {
-      console.error("JS Error Detail:", err);
+      console.error("JS関連のエラー: ", err);
       alert("エラーが発生しました。");
       // 「一括削除ボタン」を通常状態に戻す
       setBulkDeleteBtnState("idle");
