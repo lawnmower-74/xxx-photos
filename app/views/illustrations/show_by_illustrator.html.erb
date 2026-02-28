@@ -76,46 +76,60 @@
   </div>
 </div>
 
+<style>
+  .illustration-item.selecting {
+    border-color: #007bff !important;
+    box-shadow: 0 0 10px rgba(0,123,255,0.2);
+  }
+  /* 画像のリンク（Spotlight）を無効化するクラス */
+  .disable-gallery {
+    pointer-events: none;
+    cursor: default;
+  }
+</style>
+
 <script>
 document.addEventListener("DOMContentLoaded", () => {
   const bulkDeleteBtn = document.getElementById("bulk-delete-btn");
   const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
   // ===================================
-  // 画像削除処理（個別／一括）
+  // 画像削除処理
   // ===================================
-  // 「一括削除ボタン」表示時 の状態を管理
-  const setBulkDeleteBtnState = (state, checkedCount = 0) => {
-    if (!bulkDeleteBtn) return;
+  // -----------------------------------
+  // 選択モード（UI）を管理
+  // -----------------------------------
+  const updateUIState = () => {
+    const checkboxes = document.querySelectorAll(".delete-checkbox");
+    const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+    const isSelecting = checkedCount > 0;
 
-    switch (state) {
-      case "idle": // 通常（待機）状態
-        bulkDeleteBtn.disabled = false;
+    // 拡大リンクの有効/無効切り替え（1枚でも選択された場合は拡大を無効化）
+    document.querySelectorAll(".illustration-item").forEach(item => {
+      const link = item.querySelector(".spotlight");
+      item.classList.toggle("selecting", isSelecting);
+      link.classList.toggle("disable-gallery", isSelecting);
+    });
+
+    // 一括削除ボタンの表示（待機状態）
+    if (bulkDeleteBtn) {
+      bulkDeleteBtn.style.display = isSelecting ? "block" : "none";
+      if (isSelecting) {
         bulkDeleteBtn.innerText = `選択した ${checkedCount} 件を削除`;
+        bulkDeleteBtn.disabled = false;
         bulkDeleteBtn.style.backgroundColor = "#dc3545";
         bulkDeleteBtn.style.cursor = "pointer";
-        break;
-
-      case "loading": // 削除実行中
-        bulkDeleteBtn.disabled = true;
-        bulkDeleteBtn.innerText = "削除処理中...";
-        bulkDeleteBtn.style.backgroundColor = "#6c757d";
-        bulkDeleteBtn.style.cursor = "not-allowed";
-        break;
+      }
     }
   };
 
-  // 「一括削除ボタン」の表示・非表示を管理
-  const updateBulkButtonVisibility = () => {
+  // 一括削除中の「一括削除ボタン」UIを管理
+  const setBulkBtnLoading = (isLoading) => {
     if (!bulkDeleteBtn) return;
-    const checkedCount = document.querySelectorAll(".delete-checkbox:checked").length;
-
-    if (checkedCount > 0) {
-      bulkDeleteBtn.style.display = "block";
-      setBulkDeleteBtnState("idle", checkedCount);
-    } else {
-      bulkDeleteBtn.style.display = "none";
-    }
+    bulkDeleteBtn.disabled = isLoading;
+    bulkDeleteBtn.innerText = isLoading ? "削除処理中..." : bulkDeleteBtn.innerText;
+    bulkDeleteBtn.style.backgroundColor = isLoading ? "#6c757d" : "#dc3545";
+    bulkDeleteBtn.style.cursor = isLoading ? "not-allowed" : "pointer";
   };
 
   // 削除処理（個別／一括共通）
@@ -128,7 +142,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!window.confirm(message)) return;
 
     // 「一括削除ボタン」の状態を「削除中」に切り替え
-    setBulkDeleteBtnState("loading");
+    setBulkBtnLoading(true);
 
     try {
       const response = await fetch("/illustrations/bulk_destroy", {
@@ -148,22 +162,23 @@ document.addEventListener("DOMContentLoaded", () => {
             element.style.transition = "all 0.3s ease";
             element.style.opacity = "0";
             element.style.transform = "scale(0.8)";
-            setTimeout(() => element.remove(), 300);
+            setTimeout(() => {
+              element.remove();
+              updateUIState();
+            }, 300);
           }
         });
-        // 削除完了後、「一括削除ボタン」の表示状態を再計算
-        setTimeout(updateBulkButtonVisibility, 350);
       } else {
         const errorData = await response.json().catch(() => ({}));
         alert("削除に失敗しました: " + (errorData.error || "サーバーエラー"));
         // 「一括削除ボタン」を通常状態に戻す
-        setBulkDeleteBtnState("idle");
+        setBulkBtnLoading(false);
       }
     } catch (err) {
       console.error("JS関連のエラー: ", err);
       alert("エラーが発生しました。");
       // 「一括削除ボタン」を通常状態に戻す
-      setBulkDeleteBtnState("idle");
+      setBulkBtnLoading(false);
     }
   };
 
@@ -184,7 +199,6 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
       if (response.ok) {
-        // 成功したら完了メッセージを出してリロード（またはボタンの見た目を変える）
         alert("アルバムの表紙を更新しました！");
         window.location.reload(); 
       } else {
@@ -199,39 +213,55 @@ document.addEventListener("DOMContentLoaded", () => {
   // ===================================
   // イベントリスナーの設定
   // ===================================
-  // チェックボックス
-  document.addEventListener("change", (e) => {
-    if (e.target.classList.contains("delete-checkbox")) {
-      updateBulkButtonVisibility();
-    }
-  });
-
   // クリックイベント
   document.addEventListener("click", (e) => {
-    // 個別削除ボタン
     const deleteBtn = e.target.closest(".single-delete-btn");
+    const coverBtn = e.target.closest(".set-cover-btn");
+    const bulkBtn = e.target.closest("#bulk-delete-btn");
+
+    // 削除ボタン
     if (deleteBtn) {
-      e.preventDefault();  // ※リンク（拡大表示）の発火を防ぐ
+      e.preventDefault(); // ※リンク（拡大表示）の発火を防ぐ
       deleteIllustrations([deleteBtn.dataset.id]);
       return;
     }
 
     // アルバムカバー設定ボタン
-    const coverBtn = e.target.closest(".set-cover-btn");
     if (coverBtn) {
       e.preventDefault();
       setFolderCover(coverBtn.dataset.id);
       return;
     }
+
+    // 一括削除ボタン
+    if (bulkBtn) {
+      const selectedIds = Array.from(document.querySelectorAll(".delete-checkbox:checked")).map(cb => cb.dataset.id);
+      deleteIllustrations(selectedIds);
+      return;
+    }
+
+    // 選択モード判定
+    const item = e.target.closest(".illustration-item");
+    if (item) {
+      const checkbox = item.querySelector(".delete-checkbox");
+      const isSelecting = document.querySelectorAll(".delete-checkbox:checked").length > 0;
+
+      // すでに選択中、またはチェックボックスを直接クリックした場合
+      if (isSelecting || e.target.classList.contains("delete-checkbox")) {
+        if (e.target !== checkbox) {
+          e.preventDefault(); // ※リンク（拡大表示）の発火を防ぐ
+          checkbox.checked = !checkbox.checked;
+        }
+        updateUIState();
+      }
+    }
   });
 
-  // 一括削除ボタン
-  if (bulkDeleteBtn) {
-    bulkDeleteBtn.addEventListener("click", () => {
-      const selectedIds = Array.from(document.querySelectorAll(".delete-checkbox:checked"))
-                               .map(cb => cb.dataset.id);
-      deleteIllustrations(selectedIds);
-    });
-  }
+  // チェックボックス
+  document.addEventListener("change", (e) => {
+    if (e.target.classList.contains("delete-checkbox")) {
+      updateUIState();
+    }
+  });
 });
 </script>
