@@ -1,4 +1,4 @@
-<%# ギャラリー化ライブラリ %>
+<%# --- ギャラリー化ライブラリ --- %>
 <script src="https://cdn.jsdelivr.net/npm/spotlight.js@0.7.8/dist/spotlight.bundle.js"></script>
 
 <div style="max-width: 1000px; margin: 0 auto; padding: 20px;">
@@ -31,7 +31,7 @@
     <% @illustrations.each do |illustration| %>
       <div class="illustration-item" id="item-<%= illustration.id %>" style="position: relative; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: white; transition: all 0.3s ease;">
         
-        <%# --- 選択用チェックボックス --- %>
+        <%# 選択削除用チェックボックス %>
         <input type="checkbox" class="delete-checkbox" data-id="<%= illustration.id %>" 
                style="position: absolute; top: 10px; left: 10px; z-index: 10; width: 20px; height: 20px; cursor: pointer;">
 
@@ -42,7 +42,7 @@
              data-title="<%= illustration.shot_at&.strftime('%Y-%m-%d %H:%M') %>"
              style="display: block;">
             <% if illustration.image.attached? %>
-              <%# サムネ表示 %>
+              <%# サムネイル %>
               <%= image_tag illustration.image.variant(resize_to_limit: [300, 300]), 
                             loading: "lazy",
                             style: "width: 100%; height: 200px; object-fit: cover; display: block;" %>
@@ -51,16 +51,25 @@
         <% end %>
 
         <div style="padding: 10px; display: flex; justify-content: space-between; align-items: center;">
-          <%# --- 撮影日時 --- %>
+          <%# 撮影日時 %>
           <span style="font-size: 0.8em; color: #666;">
             📅 <%= illustration.shot_at&.strftime("%m/%d %H:%M") %>
           </span>
 
-          <%# --- 個別削除ボタン --- %>
-          <button class="single-delete-btn" data-id="<%= illustration.id %>" 
-                  style="background: none; border: none; color: #dc3545; cursor: pointer; font-size: 0.9em;">
-            削除
-          </button>
+          <div style="display: flex; gap: 10px;">
+            <%# アルバムカバー設定ボタン %>
+            <button class="set-cover-btn" data-id="<%= illustration.id %>" 
+                    style="background: none; border: none; color: #007bff; cursor: pointer; font-size: 0.9em;"
+                    title="この画像をフォルダの表紙にする">
+              ★ 表紙
+            </button>
+
+            <%# 個別削除ボタン %>
+            <button class="single-delete-btn" data-id="<%= illustration.id %>" 
+                    style="background: none; border: none; color: #dc3545; cursor: pointer; font-size: 0.9em;">
+              削除
+            </button>
+          </div>
         </div>
       </div>
     <% end %>
@@ -72,6 +81,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const bulkDeleteBtn = document.getElementById("bulk-delete-btn");
   const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
+  // ===================================
+  // 画像削除処理（個別／一括）
+  // ===================================
   // 「一括削除ボタン」表示時 の状態を管理
   const setBulkDeleteBtnState = (state, checkedCount = 0) => {
     if (!bulkDeleteBtn) return;
@@ -106,7 +118,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
-  // 削除処理（個別／選択共通）
+  // 削除処理（個別／一括共通）
   const deleteIllustrations = async (ids) => {
     // 確認用ダイアログ表示
     const message = ids.length > 1 
@@ -156,9 +168,37 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   // ===================================
+  // アルバムカバー設定処理
+  // ===================================
+  const setFolderCover = async (imageId) => {
+    const folderName = "<%= @illustrator.name %>";
+
+    try {
+      const response = await fetch(`/folders/${encodeURIComponent(folderName)}/set_cover`, {
+        method: "PATCH",
+        headers: { 
+          "X-CSRF-Token": csrfToken,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ image_id: imageId })
+      });
+
+      if (response.ok) {
+        // 成功したら完了メッセージを出してリロード（またはボタンの見た目を変える）
+        alert("アルバムの表紙を更新しました！");
+        window.location.reload(); 
+      } else {
+        alert("設定に失敗しました。");
+      }
+    } catch (err) {
+      console.error("カバー設定エラー: ", err);
+      alert("通信エラーが発生しました。");
+    }
+  };
+
+  // ===================================
   // イベントリスナーの設定
   // ===================================
-
   // チェックボックス
   document.addEventListener("change", (e) => {
     if (e.target.classList.contains("delete-checkbox")) {
@@ -166,12 +206,22 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // 個別削除ボタン
+  // クリックイベント
   document.addEventListener("click", (e) => {
-    const btn = e.target.closest(".single-delete-btn");
-    if (btn) {
-      e.preventDefault(); // ※リンク（拡大表示）の発火を防ぐ
-      deleteIllustrations([btn.dataset.id]);
+    // 個別削除ボタン
+    const deleteBtn = e.target.closest(".single-delete-btn");
+    if (deleteBtn) {
+      e.preventDefault();  // ※リンク（拡大表示）の発火を防ぐ
+      deleteIllustrations([deleteBtn.dataset.id]);
+      return;
+    }
+
+    // アルバムカバー設定ボタン
+    const coverBtn = e.target.closest(".set-cover-btn");
+    if (coverBtn) {
+      e.preventDefault();
+      setFolderCover(coverBtn.dataset.id);
+      return;
     }
   });
 

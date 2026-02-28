@@ -3,7 +3,8 @@ class IllustrationsController < ApplicationController
 
   def index
     # ※イラストレーター = フォルダ
-    @illustrators = Illustrator.all.includes(:illustrations)
+    # 最新画像 or カバー画像を表示するためinclude
+    @illustrators = Illustrator.all.includes(:illustrations, :cover_illustration)
   end
 
   def show

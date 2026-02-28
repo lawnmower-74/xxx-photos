@@ -44,14 +44,14 @@
           <div style="border: 1px solid #ddd; padding: 20px; border-radius: 10px; text-align: center; background: white; transition: 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
             <%# アルバムカバー %>
             <div style="width: 100%; height: 120px; background: #f0f0f0; border-radius: 6px; margin-bottom: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center;">
-              <%# 関連付けから最新の1枚を取得 %>
-              <% last_illustration = illustrator.illustrations.last %>
-              <% if last_illustration && last_illustration.image.attached? %>
-                <%# サムネイルとしてリサイズして表示 %>
-                <%= image_tag last_illustration.image.variant(resize_to_fill: [200, 200]), 
+              <%# カバー画像を表示（指定なければ最新画像） %>
+              <% display_illustration = illustrator.cover_illustration || illustrator.illustrations.last %>
+              <% if display_illustration && display_illustration.image.attached? %>
+                <%# サムネイル %>
+                <%= image_tag display_illustration.image.variant(resize_to_fill: [200, 200]), 
                               style: "width: 100%; height: 100%; object-fit: cover;" %>
               <% else %>
-                <%# 画像がない場合はフォルダアイコン %>
+                <%# 画像が1枚もない場合はフォルダアイコン %>
                 <div style="font-size: 40px;">📁</div>
               <% end %>
             </div>
