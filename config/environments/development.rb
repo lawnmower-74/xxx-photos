@@ -76,4 +76,13 @@ Rails.application.configure do
 
   # スマホや別PCからのIPアドレス指定アクセスを許可する
   config.hosts.clear
+
+  # Bulletの設定
+  config.after_initialize do
+    Bullet.enable = true
+    Bullet.alert = false
+    Bullet.bullet_logger = true   # log/bullet.log に書き出し
+    Bullet.console = true         # コンソール（ブラウザ）に書き出し
+    Bullet.rails_logger = true    # log/development.log に書き出し
+  end
 end
