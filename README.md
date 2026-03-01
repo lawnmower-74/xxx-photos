@@ -17,8 +17,7 @@
 
 ---
 
-
-## コマンド
+## コマンド（開発用）
 
 ```bash
 docker compose run --rm app rails new . --force -d mysql --skip-bundle
@@ -47,3 +46,10 @@ docker compose run --rm app rails db:migrate:reset
 ```bash
 docker compose up
 ```
+
+---
+
+## ドキュメント
+
+- [データベース設計図](./docs/public/database-schema.dio)
+
