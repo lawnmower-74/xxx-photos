@@ -1,6 +1,6 @@
 class Illustration < ApplicationRecord
   # 1つの画像は1つのフォルダ（イラストレーター）に属する
-  belongs_to :illustrator
+  belongs_to :illustrator, counter_cache: true
 
   # これによりactive_storage_attachmentsのrecord_idと紐づく
   has_one_attached :image

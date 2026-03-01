@@ -51,7 +51,7 @@
             <%# アルバムカバー %>
             <div style="width: 100%; height: 120px; background: #f0f0f0; border-radius: 6px; margin-bottom: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center;">
               <%# カバー画像を表示（指定なければ最新画像） %>
-              <% display_illustration = illustrator.cover_illustration || illustrator.illustrations.last %>
+              <% display_illustration = illustrator.cover_illustration || illustrator.latest_illustration %>
               <% if display_illustration && display_illustration.image.attached? %>
                 <%# サムネイル %>
                 <%= image_tag display_illustration.image.variant(resize_to_fill: [200, 200]), 
@@ -66,7 +66,7 @@
               <%= illustrator.name %>
             </div>
             <div style="font-size: 12px; color: #888; margin-top: 5px;">
-              <%= illustrator.illustrations.count %> 枚
+              <%= illustrator.illustrations_count %> 枚
             </div>
           </div>
         <% end %>
