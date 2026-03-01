@@ -3,8 +3,11 @@ class IllustrationsController < ApplicationController
 
   def index
     # ※イラストレーター = フォルダ
-    # 最新画像 or カバー画像を表示するためinclude
-    @illustrators = Illustrator.all.includes(:illustrations, :cover_illustration)
+    @illustrators = Illustrator.all.includes(
+      # サムネで表示するため含める
+      cover_illustration: { image_attachment: :blob }, # カバー画像のパス
+      latest_illustration: { image_attachment: :blob } # 最新画像のパス
+    )
   end
 
   def show
