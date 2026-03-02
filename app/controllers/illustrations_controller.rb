@@ -36,25 +36,45 @@ class IllustrationsController < ApplicationController
   # アップロード処理
   # ==========================================
   def create
-    # 入力値チェック
-    if params[:illustration].blank? || params[:illustration][:image].blank? || params[:illustration][:illustrator_name].blank?
-      return render json: { error: "フォームに入力してください" }, status: :unprocessable_entity
-    end
-  
-    # イラストレーター（フォルダ）検索／なければ新規作成
-    illustrator = Illustrator.find_or_create_by!(name: params[:illustration][:illustrator_name])
-  
-    # イラストレーターの子要素として画像を紐づけ
-    @illustration = illustrator.illustrations.build(image: params[:illustration][:image])
-  
-    # アップロード（DB・Storageともに）
-    if @illustration.save
-      # 「撮影日時」の抽出・保存を非同期で実行
-      ExtractExifJob.perform_later(@illustration.id)
-  
-      render json: { message: "アップロード完了（※撮影日時は順次反映されます）" }, status: :created
-    else
-      render json: { error: @illustration.errors.full_messages.join(", ") }, status: :unprocessable_entity
+    # ----------------------------------------
+    # デッドロック対策（リトライ）
+    # ----------------------------------------
+    retries = 0
+    max_retries = 3      # 無限ループ防止
+    sleep_interval = 0.1 # リトライ間隔
+
+    begin
+      # 入力値チェック
+      if params[:illustration].blank? || params[:illustration][:image].blank? || params[:illustration][:illustrator_name].blank?
+        return render json: { error: "フォームに入力してください" }, status: :unprocessable_entity
+      end
+
+      # イラストレーター（フォルダ）検索／なければ新規作成
+      illustrator = Illustrator.find_or_create_by!(name: params[:illustration][:illustrator_name])
+    
+      # イラストレーターの子要素として画像を紐づけ
+      @illustration = illustrator.illustrations.build(image: params[:illustration][:image])
+    
+      # アップロード（DB・Storageともに）
+      if @illustration.save
+        # 「撮影日時」の抽出・保存を非同期で実行
+        ExtractExifJob.perform_later(@illustration.id)
+    
+        render json: { message: "アップロード完了（※撮影日時は順次反映されます）" }, status: :created
+      else
+        render json: { error: @illustration.errors.full_messages.join(", ") }, status: :unprocessable_entity
+      end
+    
+    rescue ActiveRecord::Deadlocked => e
+      # デッドロックが発生した場合はリトライ
+      if retries < max_retries
+        retries += 1
+        Rails.logger.warn "デッドロック検知。リトライします（#{retries}回目）: #{e.message}"
+        sleep(sleep_interval)
+        retry
+      else
+        raise e # リトライしてもダメならエラーとして投げる
+      end
     end
   end
 
