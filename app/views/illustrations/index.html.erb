@@ -22,6 +22,8 @@
 
     <%# アップロード状況（件数）を表示 %>
     <div id="upload-status" style="margin-top: 15px; font-weight: bold; color: #007bff;"></div>
+    <%# 失敗リストを表示 %>
+    <div id="error-list" style="margin-top: 10px; line-height: 1.6;"></div>
   </section>
 
   <hr style="margin: 40px 0;">
@@ -143,6 +145,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const totalFiles = files.length;
       let completedCount = 0;
       let errorCount = 0;
+      let failedFiles = [];
 
       // ----------------------------------------
       // 並列上限
@@ -152,8 +155,8 @@ document.addEventListener("DOMContentLoaded", () => {
       // アップロードボタンを「アップロード中」の状態にする
       setSubmitBtnState("loading");
 
-      // ステータス表示を更新する関数
-      const updateStatus = () => {
+      // アップロード状況を更新（表示更新）
+      const renderUploadProgress = () => {
         let message = `${totalFiles}枚中 ${completedCount}枚の送信が完了...`;
         
         if (errorCount > 0) {
@@ -161,6 +164,21 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         
         status.innerText = message;
+
+        // 失敗リストの表示
+        const errorList = document.getElementById("error-list");
+        if (failedFiles.length > 0) {
+          errorList.innerHTML = `
+            <div style="color: #dc3545; font-size: 0.85em; background: #fff5f5; padding: 10px; border-radius: 4px; border: 1px solid #ffc1c1;">
+              <strong>⚠️ アップロード失敗:</strong>
+              <ul style="margin: 5px 0 0 20px; padding: 0;">
+                ${failedFiles.map(name => `<li>${name}</li>`).join('')}
+              </ul>
+            </div>
+          `;
+        } else {
+          errorList.innerHTML = "";
+        }
       };
 
       // アップロード処理
@@ -179,12 +197,14 @@ document.addEventListener("DOMContentLoaded", () => {
           if (!response.ok) throw new Error('アップロード失敗'); // -> catchへ
           
           completedCount++;
-          updateStatus();
 
         } catch (err) {
           console.error("アップロード失敗: ", err);
           errorCount++;
-          updateStatus();
+          failedFiles.push(file.name);
+
+        } finally {
+          renderUploadProgress(); // アップロード状況の更新（表示更新）
         }
       };
 
@@ -207,18 +227,22 @@ document.addEventListener("DOMContentLoaded", () => {
         await Promise.all(workers);
   
         if (errorCount > 0) {
-          status.innerText = `${completedCount}/${totalFiles} 件 アップロード済み`
+          // アップロードに失敗した画像がある場合
+          status.innerText = `${completedCount}/${totalFiles} 件 アップロード済み\n`
           status.style.color = "orange";
+          setSubmitBtnState("idle");
+
         } else {
+          // 全件アップロード成功した場合
           status.innerText = "正常にアップロードされました！";
           status.style.color = "green";
+
+          // アップロード完了後にリロード実行（フォルダを自動的に表示するため）
+          setTimeout(() => {
+            window.location.reload();
+          }, 2000);
         }
         
-        // アップロード完了後にリロード実行（フォルダを自動的に表示するため）
-        setTimeout(() => {
-          window.location.reload();
-        }, 2000);
-
       } catch (err) {
         console.error("システムエラー: ", err);
         alert("システムエラーが発生しました。");
