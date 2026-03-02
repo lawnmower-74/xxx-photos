@@ -21,7 +21,7 @@ class IllustrationsController < ApplicationController
     direction = params[:sort] == 'asc' ? :asc : :desc
     
     @illustrations = @illustrator.illustrations
-                                  .with_attached_image
+                                  .includes(image_attachment: :blob)
                                   .order(shot_at: direction)
   end
 
