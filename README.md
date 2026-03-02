@@ -51,5 +51,8 @@ docker compose up
 
 ## ドキュメント
 
-- [データベース設計図](./docs/public/database-schema.dio)
+### ER図
+
+![ER図](docs/public/database-schema.svg)
+
 
