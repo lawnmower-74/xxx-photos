@@ -59,8 +59,11 @@ class IllustrationsController < ApplicationController
       if @illustration.save
         # 「撮影日時」の抽出・保存を非同期で実行
         ExtractExifJob.perform_later(@illustration.id)
+
+        # # 「見た目の特徴値（ハッシュ）」の計算・保存を非同期で実行
+        GenerateFingerprintJob.perform_later(@illustration.id)
     
-        render json: { message: "アップロード完了（※撮影日時は順次反映されます）" }, status: :created
+        render json: { message: "アップロード完了" }, status: :created
       else
         render json: { error: @illustration.errors.full_messages.join(", ") }, status: :unprocessable_entity
       end
