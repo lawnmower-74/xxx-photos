@@ -28,46 +28,52 @@
 
   <%# --- 類似画像一覧 --- %>
   <% if @similar_illustrations.present? %>
-    <div style="margin-bottom: 40px; padding: 20px; background: #fff9f0; border: 2px dashed #ffc107; border-radius: 12px;">
-      <h2 style="margin-top: 0; color: #856404; font-size: 1.1em; display: flex; align-items: center; gap: 8px;">
-        ⚠️ もしかしたら同じ画像かも？
-      </h2>
-      <p style="font-size: 0.85em; color: #7d6a3a; margin-bottom: 15px;">
-        特徴が非常に近い画像が見つかりました。不要なものを削除して整理できます。
-      </p>
-      
-      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px;">
-        <% @similar_illustrations.each do |illustration| %>
-          <div class="illustration-item" id="similar-item-<%= illustration.id %>" style="position: relative; border: 1px solid #ffeeba; border-radius: 8px; overflow: hidden; background: white;">
+    <details style="margin-bottom: 40px; padding: 10px; background: #fff9f0; border: 2px dashed #ffc107; border-radius: 12px;">
+      <summary style="padding: 5px 20px; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+        <h2 style="margin: 0; color: #856404; font-size: 1.0em; display: flex; align-items: center; gap: 8px;">
+          ⚠️ もしかしたら同じ画像かも？ (<%= @similar_illustrations.size %>枚)
+        </h2>
+        <span class="tgl-icon" style="transition: transform 0.3s; color: #856404; font-weight: bold;">▼</span>
+      </summary>
 
-            <%# 一括削除用チェックボックス %>
-            <input type="checkbox" class="delete-checkbox" data-id="<%= illustration.id %>" 
-                   style="position: absolute; top: 8px; left: 8px; z-index: 10; width: 18px; height: 18px; cursor: pointer;">
-            
-            <%# 画像表示 %>
-            <% if illustration.image.attached? %>
-              <%# 拡大リンク（クリック時に原寸大の画像を表示） %>
-              <a href="<%= url_for(illustration.image) %>" 
-                class="spotlight" 
-                data-group="similar-gallery"
-                style="display: block;">
-                <%# サムネイル %>
-                <%= image_tag illustration.image.variant(resize_to_limit: [200, 200]),
-                              loading: "lazy", 
-                              style: "width: 100%; height: 140px; object-fit: cover; display: block;" %>
-              </a>
-            <% end %>
+      <div style="padding: 0 20px 20px 20px;">
+        <p style="font-size: 0.85em; color: #7d6a3a; margin-bottom: 15px;">
+          特徴が非常に近い画像が見つかりました。不要なものを削除して整理できます。
+        </p>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px;">
+          <% @similar_illustrations.each do |illustration| %>
+            <div class="illustration-item" id="similar-item-<%= illustration.id %>" style="position: relative; border: 1px solid #ffeeba; border-radius: 8px; overflow: hidden; background: white;">
 
-            <div style="padding: 6px; text-align: center;">
-              <%# 撮影日時 %>
-              <span style="font-size: 0.75em; color: #666;">
-                📅 <%= illustration.shot_at&.strftime("%m/%d %H:%M") %>
-              </span>
+              <%# 一括削除用チェックボックス %>
+              <input type="checkbox" class="delete-checkbox" data-id="<%= illustration.id %>" 
+                    style="position: absolute; top: 8px; left: 8px; z-index: 10; width: 18px; height: 18px; cursor: pointer;">
+              
+              <%# 画像表示 %>
+              <% if illustration.image.attached? %>
+                <%# 拡大リンク（クリック時に原寸大の画像を表示） %>
+                <a href="<%= url_for(illustration.image) %>" 
+                  class="spotlight" 
+                  data-group="similar-gallery"
+                  style="display: block;">
+                  <%# サムネイル %>
+                  <%= image_tag illustration.image.variant(resize_to_limit: [200, 200]),
+                                loading: "lazy", 
+                                style: "width: 100%; height: 140px; object-fit: cover; display: block;" %>
+                </a>
+              <% end %>
+
+              <div style="padding: 6px; text-align: center;">
+                <%# 撮影日時 %>
+                <span style="font-size: 0.75em; color: #666;">
+                  📅 <%= illustration.shot_at&.strftime("%m/%d %H:%M") %>
+                </span>
+              </div>
             </div>
-          </div>
-        <% end %>
+          <% end %>
+        </div>
       </div>
-    </div>
+    </details>
   <% end %>
 
   <%# --- 画像一覧 --- %>
@@ -120,6 +126,9 @@
 </div>
 
 <style>
+  /* ================================================ */
+  /* 一括削除（選択時）に関するスタイル */
+  /* ================================================ */
   .illustration-item.selecting {
     border-color: #007bff !important;
     box-shadow: 0 0 10px rgba(0,123,255,0.2);
@@ -128,6 +137,24 @@
   .disable-gallery {
     pointer-events: none;
     cursor: default;
+  }
+
+  /* ================================================ */
+  /* 類似画像のアコーディオン形式に関するスタイル */
+  /* ================================================ */
+  /* ブラウザ標準のトグルボタンを非表示化 */
+  summary::-webkit-details-marker {
+    display: none;
+  }
+
+  /* トグルボタンのアニメーション */
+  details[open] .tgl-icon {
+    transform: rotate(180deg);
+  }
+
+  /* ホバー時の背景色変更 */
+  summary:hover {
+    background-color: rgba(255, 193, 7, 0.1);
   }
 </style>
 
