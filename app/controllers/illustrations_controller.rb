@@ -20,9 +20,50 @@ class IllustrationsController < ApplicationController
     @illustrator = Illustrator.find_by!(name: params[:name])
     direction = params[:sort] == 'asc' ? :asc : :desc
     
+    # 一覧に表示する画像の抽出
     @illustrations = @illustrator.illustrations
                                   .includes(image_attachment: :blob)
                                   .order(shot_at: direction)
+    
+    # -----------------------------------------
+    # 類似画像（重複候補）の抽出
+    # -----------------------------------------
+    candidates = @illustrations.select { |i| i.fingerprint.present? }
+    
+    similar_ids = []
+
+    # -----------------------------------------
+    # 類似のしきい値（この値以下を類似と判定）
+    # -----------------------------------------
+    threshold = 5
+
+    # 一枚同士で比較
+    candidates.each_with_index do |img_a, index|
+    
+      # 画像A を 64bit 正整数に変換
+      hash_a = img_a.fingerprint.to_i & 0xFFFFFFFFFFFFFFFF
+    
+      # 画像A 以降の画像を一枚抽出
+      candidates[(index + 1)..-1].each do |img_b|
+        # 画像B も 64bit 正整数に変換
+        hash_b = img_b.fingerprint.to_i & 0xFFFFFFFFFFFFFFFF
+        
+        # 二つの値を重ねると数値の違うところだけが 1 として浮かび上がる。その数をカウント（= ハミング距離）
+        distance = (hash_a ^ hash_b).to_s(2).count("1")
+    
+        # ハミング距離がしきい値以下であれば「類似」と判定
+        if distance <= threshold
+          similar_ids << img_a.id
+          similar_ids << img_b.id
+        end
+      end
+    end
+
+    # 重複候補があれば、それらだけを抽出
+    @similar_illustrations = @illustrator.illustrations
+                                        .where(id: similar_ids.uniq)
+                                        .includes(image_attachment: :blob)
+                                        .order(shot_at: direction)
   end
 
   def new
