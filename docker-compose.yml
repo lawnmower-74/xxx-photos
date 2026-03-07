@@ -1,6 +1,7 @@
 services:
   db:
     image: mysql:8.0
+    container_name: db
     environment:
       MYSQL_ROOT_PASSWORD: password
       MYSQL_DATABASE: xxx_photos
@@ -11,6 +12,7 @@ services:
 
   app:
     build: .
+    container_name: app
     command: bash -c "rm -f tmp/pids/server.pid && bundle exec rails s -p 3000 -b '0.0.0.0'"
     volumes:
       - .:/app

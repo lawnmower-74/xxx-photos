@@ -20,10 +20,6 @@
 ## コマンド（開発用）
 
 ```bash
-docker compose run --rm app rails new . --force -d mysql --skip-bundle
-```
-
-```bash
 docker compose build
 ```
 
@@ -45,6 +41,10 @@ docker compose run --rm app rails db:migrate:reset
 
 ```bash
 docker compose up
+```
+
+```bash
+docker exec -it app rails c
 ```
 
 ---
