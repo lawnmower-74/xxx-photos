@@ -1,4 +1,7 @@
 class Illustration < ApplicationRecord
+  # ==================================
+  # リレーション
+  # ==================================
   # 1つの画像は1つのフォルダ（イラストレーター）に属する
   belongs_to :illustrator, counter_cache: true
 
@@ -8,6 +11,9 @@ class Illustration < ApplicationRecord
   # 画像削除時に実行
   before_destroy :clear_illustrator_cover_id
 
+  # ==================================
+  # バリデーション
+  # ==================================
   validates :image, presence: true
   validates :illustrator_id, presence: true
 
