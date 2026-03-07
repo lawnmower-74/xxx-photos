@@ -25,45 +25,8 @@ class IllustrationsController < ApplicationController
                                   .includes(image_attachment: :blob)
                                   .order(shot_at: direction)
     
-    # -----------------------------------------
     # 類似画像（重複候補）の抽出
-    # -----------------------------------------
-    candidates = @illustrations.select { |i| i.fingerprint.present? }
-    
-    similar_ids = []
-
-    # -----------------------------------------
-    # 類似のしきい値（この値以下を類似と判定）
-    # -----------------------------------------
-    threshold = 5
-
-    # 一枚同士で比較
-    candidates.each_with_index do |img_a, index|
-    
-      # 画像A を 64bit 正整数に変換
-      hash_a = img_a.fingerprint.to_i & 0xFFFFFFFFFFFFFFFF
-    
-      # 画像A 以降の画像を一枚抽出
-      candidates[(index + 1)..-1].each do |img_b|
-        # 画像B も 64bit 正整数に変換
-        hash_b = img_b.fingerprint.to_i & 0xFFFFFFFFFFFFFFFF
-        
-        # 二つの値を重ねると数値の違うところだけが 1 として浮かび上がる。その数をカウント（= ハミング距離）
-        distance = (hash_a ^ hash_b).to_s(2).count("1")
-    
-        # ハミング距離がしきい値以下であれば「類似」と判定
-        if distance <= threshold
-          similar_ids << img_a.id
-          similar_ids << img_b.id
-        end
-      end
-    end
-
-    # 重複候補があれば、それらだけを抽出
-    @similar_illustrations = @illustrator.illustrations
-                                        .where(id: similar_ids.uniq)
-                                        .includes(image_attachment: :blob)
-                                        .order(shot_at: direction)
+    @similar_illustrations = calculate_similar_illustrations(@illustrations)
   end
 
   def new
@@ -139,8 +102,27 @@ class IllustrationsController < ApplicationController
   # ==========================================
   def bulk_destroy
     ids = params[:ids]
+    # 削除実行
     if ids.present? && Illustration.where(id: ids).destroy_all
-      render json: { message: "一括削除に成功しました" }, status: :ok
+
+      # 削除後（更新後）の全画像を取得
+      @illustrator = Illustrator.find_by!(name: params[:illustrator_name])
+      latest_illustrations = @illustrator.illustrations.includes(image_attachment: :blob)
+      
+      # 上記から類似画像を再計算
+      @similar_illustrations = calculate_similar_illustrations(latest_illustrations)
+  
+      html = render_to_string(
+        partial: 'illustrations/similar_section',
+        locals: { 
+          similar_illustrations: @similar_illustrations
+        }
+      )
+
+      render json: { 
+        message: "一括削除に成功しました", 
+        html: html 
+      }, status: :ok
     else
       render json: { error: "削除する項目が選択されていないか、失敗しました" }, status: :unprocessable_entity
     end
@@ -160,4 +142,45 @@ class IllustrationsController < ApplicationController
     def illustration_params
       params.require(:illustration).permit(:illustrator_name, :image)
     end
+
+  # ==========================================
+  # 類似画像（重複候補）の抽出
+  # ==========================================
+  def calculate_similar_illustrations(illustrations)
+    candidates = illustrations.select { |i| i.fingerprint.present? }
+    
+    similar_ids = []
+
+    # -----------------------------------------
+    # 類似のしきい値（この値以下を類似と判定）
+    # -----------------------------------------
+    threshold = 5
+
+    # 一枚同士で比較
+    candidates.each_with_index do |img_a, index|
+      # 画像A を 64bit 正整数に変換
+      hash_a = img_a.fingerprint.to_i & 0xFFFFFFFFFFFFFFFF
+
+      # 画像A 以降の画像を一枚抽出
+      candidates[(index + 1)..-1].each do |img_b|
+        # 画像B も 64bit 正整数に変換
+        hash_b = img_b.fingerprint.to_i & 0xFFFFFFFFFFFFFFFF
+
+        # 二つの値を重ねると数値の違うところだけが 1 として浮かび上がる。その数をカウント（= ハミング距離）
+        distance = (hash_a ^ hash_b).to_s(2).count("1")
+
+        # ハミング距離がしきい値以下であれば「類似」と判定
+        if distance <= threshold
+          similar_ids << img_a.id
+          similar_ids << img_b.id
+        end
+      end
+    end
+
+    direction = params[:sort] == 'asc' ? :asc : :desc
+
+    illustrations.where(id: similar_ids.uniq)
+                  .includes(image_attachment: :blob)
+                  .order(shot_at: direction)
+  end
 end

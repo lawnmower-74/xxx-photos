@@ -26,55 +26,10 @@
         class: "sort-link #{'active' if params[:sort] == 'asc'}" %>
   </div>
 
-  <%# --- 類似画像一覧 --- %>
-  <% if @similar_illustrations.present? %>
-    <details style="margin-bottom: 40px; padding: 10px; background: #fff9f0; border: 2px dashed #ffc107; border-radius: 12px;">
-      <summary style="padding: 5px 20px; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; user-select: none;">
-        <h2 style="margin: 0; color: #856404; font-size: 1.0em; display: flex; align-items: center; gap: 8px;">
-          ⚠️ もしかしたら同じ画像かも？ (<%= @similar_illustrations.size %>枚)
-        </h2>
-        <span class="tgl-icon" style="transition: transform 0.3s; color: #856404; font-weight: bold;">▼</span>
-      </summary>
-
-      <div style="padding: 0 20px 20px 20px;">
-        <p style="font-size: 0.85em; color: #7d6a3a; margin-bottom: 15px;">
-          特徴が非常に近い画像が見つかりました。不要なものを削除して整理できます。
-        </p>
-        
-        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px;">
-          <% @similar_illustrations.each do |illustration| %>
-            <div class="illustration-item" id="similar-item-<%= illustration.id %>" style="position: relative; border: 1px solid #ffeeba; border-radius: 8px; overflow: hidden; background: white;">
-
-              <%# 一括削除用チェックボックス %>
-              <input type="checkbox" class="delete-checkbox" data-id="<%= illustration.id %>" 
-                    style="position: absolute; top: 8px; left: 8px; z-index: 10; width: 18px; height: 18px; cursor: pointer;">
-              
-              <%# 画像表示 %>
-              <% if illustration.image.attached? %>
-                <%# 拡大リンク（クリック時に原寸大の画像を表示） %>
-                <a href="<%= url_for(illustration.image) %>" 
-                  class="spotlight" 
-                  data-group="similar-gallery"
-                  style="display: block;">
-                  <%# サムネイル %>
-                  <%= image_tag illustration.image.variant(resize_to_limit: [200, 200]),
-                                loading: "lazy", 
-                                style: "width: 100%; height: 140px; object-fit: cover; display: block;" %>
-                </a>
-              <% end %>
-
-              <div style="padding: 6px; text-align: center;">
-                <%# 撮影日時 %>
-                <span style="font-size: 0.75em; color: #666;">
-                  📅 <%= illustration.shot_at&.strftime("%m/%d %H:%M") %>
-                </span>
-              </div>
-            </div>
-          <% end %>
-        </div>
-      </div>
-    </details>
-  <% end %>
+  <%# --- 「類似」画像一覧 --- %>
+  <div id="similar-section-wrapper">
+    <%= render 'similar_section', similar_illustrations: @similar_illustrations %>
+  </div>
 
   <%# --- 画像一覧 --- %>
   <div id="illustration-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px;">
@@ -230,38 +185,35 @@ document.addEventListener("DOMContentLoaded", () => {
           "X-CSRF-Token": csrfToken,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ ids: ids })
+        body: JSON.stringify({ 
+          ids: ids, // ※画像のID
+          illustrator_name: "<%= @illustrator.name %>" 
+        })
       });
 
       if (response.ok) {
-        // 画像を画面上からも消す
-        ids.forEach(id => {
-          // IDが一致する要素をすべて取得（一覧・類似セクションの両方）
-          const items = [
-            document.getElementById(`item-${id}`),
-            document.getElementById(`similar-item-${id}`)
-          ].filter(el => el !== null);
+        const data = await response.json();
 
-          items.forEach(element => {
-            element.style.transition = "all 0.3s ease";
-            element.style.opacity = "0";
-            element.style.transform = "scale(0.8)";
-            setTimeout(() => {
-              element.remove();
-              
-              // 類似セクションが空になったらセクションごと消す
-              const similarContainer = document.querySelector('[style*="background: #fff9f0"]');
-              if (similarContainer) {
-                const remainingItems = similarContainer.querySelectorAll('.illustration-item');
-                if (remainingItems.length === 0) {
-                  similarContainer.remove();
-                }
-              }
-              
-              toggleSelectingMode(); // 選択モードOFF
-            }, 300);
-          });
+        // 一覧から削除した要素を消す
+        ids.forEach(id => {
+          const item = document.getElementById(`item-${id}`);
+          if (item) {
+            item.style.transition = "all 0.3s ease";
+            item.style.opacity = "0";
+            item.style.transform = "scale(0.8)";
+            setTimeout(() => item.remove(), 300);
+          }
         });
+
+        // 削除後に類似画像がなくなれば「類似セクション」を非表示に
+        const wrapper = document.getElementById('similar-section-wrapper');
+        if (wrapper && data.html !== undefined) {
+          wrapper.innerHTML = data.html;
+        }
+
+        // 選択モードOFF
+        setTimeout(() => toggleSelectingMode(), 300);
+
       } else {
         const errorData = await response.json().catch(() => ({}));
         alert("削除に失敗しました: " + (errorData.error || "サーバーエラー"));
