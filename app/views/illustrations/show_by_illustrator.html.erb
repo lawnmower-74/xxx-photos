@@ -26,6 +26,11 @@
         class: "sort-link #{'active' if params[:sort] == 'asc'}" %>
   </div>
 
+  <%# --- 「類似」画像一覧 --- %>
+  <div id="similar-section-wrapper">
+    <%= render 'similar_section', similar_illustrations: @similar_illustrations %>
+  </div>
+
   <%# --- 画像一覧 --- %>
   <div id="illustration-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px;">
     <% @illustrations.each do |illustration| %>
@@ -76,6 +81,9 @@
 </div>
 
 <style>
+  /* ================================================ */
+  /* 一括削除（選択時）に関するスタイル */
+  /* ================================================ */
   .illustration-item.selecting {
     border-color: #007bff !important;
     box-shadow: 0 0 10px rgba(0,123,255,0.2);
@@ -84,6 +92,24 @@
   .disable-gallery {
     pointer-events: none;
     cursor: default;
+  }
+
+  /* ================================================ */
+  /* 類似画像のアコーディオン形式に関するスタイル */
+  /* ================================================ */
+  /* ブラウザ標準のトグルボタンを非表示化 */
+  summary::-webkit-details-marker {
+    display: none;
+  }
+
+  /* トグルボタンのアニメーション */
+  details[open] .tgl-icon {
+    transform: rotate(180deg);
+  }
+
+  /* ホバー時の背景色変更 */
+  summary:hover {
+    background-color: rgba(255, 193, 7, 0.1);
   }
 </style>
 
@@ -159,23 +185,35 @@ document.addEventListener("DOMContentLoaded", () => {
           "X-CSRF-Token": csrfToken,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ ids: ids })
+        body: JSON.stringify({ 
+          ids: ids, // ※画像のID
+          illustrator_name: "<%= @illustrator.name %>" 
+        })
       });
 
       if (response.ok) {
-        // 画像を画面上からも消す
+        const data = await response.json();
+
+        // 一覧から削除した要素を消す
         ids.forEach(id => {
-          const element = document.getElementById(`item-${id}`);
-          if (element) {
-            element.style.transition = "all 0.3s ease";
-            element.style.opacity = "0";
-            element.style.transform = "scale(0.8)";
-            setTimeout(() => {
-              element.remove();
-              toggleSelectingMode(); // 選択モードOFF
-            }, 300);
+          const item = document.getElementById(`item-${id}`);
+          if (item) {
+            item.style.transition = "all 0.3s ease";
+            item.style.opacity = "0";
+            item.style.transform = "scale(0.8)";
+            setTimeout(() => item.remove(), 300);
           }
         });
+
+        // 削除後に類似画像がなくなれば「類似セクション」を非表示に
+        const wrapper = document.getElementById('similar-section-wrapper');
+        if (wrapper && data.html !== undefined) {
+          wrapper.innerHTML = data.html;
+        }
+
+        // 選択モードOFF
+        setTimeout(() => toggleSelectingMode(), 300);
+
       } else {
         const errorData = await response.json().catch(() => ({}));
         alert("削除に失敗しました: " + (errorData.error || "サーバーエラー"));
