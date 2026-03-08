@@ -97,4 +97,82 @@ RSpec.describe "画像一覧に関するテスト", type: :request do
       expect(json_response["html"]).not_to include("similar-section-wrapper")
     end
   end
+
+  # ==========================================================================================
+  # アップロードのテスト（create）
+  # ==========================================================================================
+  describe "POST /illustrations" do
+    # ------------------------------------------------
+    # リクエスト（テスト）用データの作成
+    # ------------------------------------------------
+    let(:illustrator_name) { "TestArtist" }
+    let(:image_file) do
+      Rack::Test::UploadedFile.new(
+        Rails.root.join('spec/fixtures/test.png'), 
+        'image/png'
+      )
+    end
+    let(:params) do
+      { illustration: { illustrator_name: illustrator_name, image: image_file } }
+    end
+  
+    context "アップロード処理をテスト・同時にデッドロック発生時の挙動も確認" do
+
+      it "デッドロック発生しつつもアップロードは成功するケース" do
+        # -----------------------------------------------------------------------------------
+        # デッドロック発生時の retry 機構が働くのかをテスト（rescue ActiveRecord::Deadlocked）
+        # -----------------------------------------------------------------------------------
+        call_count = 0
+        # find_or_create_by! が実行されたときに代わりに以下が実行される
+        allow(Illustrator).to receive(:find_or_create_by!).and_wrap_original do |method, *args|
+          call_count += 1
+          if call_count <= 2
+            # わざとデッドロックを発生させる
+            raise ActiveRecord::Deadlocked.new("デッドロック発生")
+          else
+            method.call(*args) # 3回目は本物のメソッドを呼ぶ
+          end
+        end
+  
+        # アップロードリクエスト
+        post illustrations_path, params: params
+  
+        # ----------------------------------------------------------------------
+        # 成功ステータス（アップロード成功）が返っているかを確認
+        # ----------------------------------------------------------------------
+        expect(response).to have_http_status(:created)
+        
+        # ----------------------------------------------------------------------
+        # デッドロックによるリトライが2回行われた（合計3回呼ばれた）ことを確認
+        # ----------------------------------------------------------------------
+        expect(call_count).to eq(3)
+        
+        # ----------------------------------------------------------------------
+        # DBに保存されていることを確認
+        # ----------------------------------------------------------------------
+        illustrator = Illustrator.find_by(name: illustrator_name)
+        expect(illustrator.illustrations).to be_present
+      end
+  
+      it "デッドロックによりアップロードが失敗するケース" do
+        # find_or_create_by! が実行されたときに代わりに以下が実行される（ずっとデッドロックを返す）
+        allow(Illustrator).to receive(:find_or_create_by!).and_raise(ActiveRecord::Deadlocked)
+
+        initial_count = Illustration.count
+  
+        # ----------------------------------------------------------------------
+        # 4回目の後にエラーが返されることを確認
+        # ----------------------------------------------------------------------
+        expect {
+          post illustrations_path, params: params
+        }.to raise_error(ActiveRecord::Deadlocked)
+
+        # ----------------------------------------------------------------------
+        # DBに保存されていないことを確認
+        # ----------------------------------------------------------------------
+        expect(Illustration.count).to eq(initial_count)
+
+      end
+    end
+  end
 end
