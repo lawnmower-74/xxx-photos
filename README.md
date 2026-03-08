@@ -47,6 +47,19 @@ docker compose up
 docker exec -it app rails c
 ```
 
+## テスト用
+```bash
+docker compose run --rm app rails db:migrate RAILS_ENV=test
+```
+
+```bash
+docker compose run --rm app bundle exec rspec spec/requests/illustrations_spec.rb
+
+docker compose run --rm app bundle exec rspec spec/requests/illustrations_spec.rb --format html --out rspec_results.html
+```
+
+
+
 ---
 
 ## ドキュメント
