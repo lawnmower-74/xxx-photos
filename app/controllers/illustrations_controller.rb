@@ -114,6 +114,7 @@ class IllustrationsController < ApplicationController
   
       html = render_to_string(
         partial: 'illustrations/similar_section',
+        formats: [:html],
         locals: { 
           similar_illustrations: @similar_illustrations
         }
