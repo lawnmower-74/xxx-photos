@@ -12,6 +12,14 @@
 # the additional setup, and require it from the spec files that actually need
 # it.
 #
+# カバレッジ確認用設定
+require 'simplecov'
+SimpleCov.start 'rails' do
+  # 以下はカバレッジの計算から除外
+  add_filter '/channels/'
+  add_filter '/jobs/'
+end
+
 # See https://rubydoc.info/gems/rspec-core/RSpec/Core/Configuration
 RSpec.configure do |config|
   # rspec-expectations config goes here. You can use an alternate

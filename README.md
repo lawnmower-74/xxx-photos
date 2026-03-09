@@ -17,7 +17,7 @@
 
 ---
 
-## コマンド（開発用）
+## 開発用
 
 ```bash
 docker compose build
@@ -48,8 +48,15 @@ docker exec -it app rails c
 ```
 
 ## テスト用
+
+### RSpec
+
 ```bash
 docker compose run --rm app rails db:migrate RAILS_ENV=test
+```
+
+```bash
+docker compose run --rm app bundle exec rspec
 ```
 
 ```bash
@@ -58,14 +65,11 @@ docker compose run --rm app bundle exec rspec spec/requests/illustrations_spec.r
 docker compose run --rm app bundle exec rspec spec/requests/illustrations_spec.rb --format html --out rspec_results.html
 ```
 
-
-
 ---
 
 ## ドキュメント
 
 ### ER図
-
 ![ER図](docs/public/database-schema.svg)
 
 
