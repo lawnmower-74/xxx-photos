@@ -17,7 +17,7 @@
 
 ---
 
-## コマンド（開発用）
+## 開発用
 
 ```bash
 docker compose build
