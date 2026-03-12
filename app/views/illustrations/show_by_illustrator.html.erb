@@ -26,6 +26,15 @@
         class: "sort-link #{'active' if params[:sort] == 'asc'}" %>
   </div>
 
+  <%# --- 類似セクションの表示切り替えボタン --- %>
+  <% if @similar_illustrations.present? %>
+    <div style="margin-bottom: 15px; text-align: right;">
+      <button id="toggle-similar-btn" style="background: #e9ecef; border: 1px solid #ddd; padding: 5px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85em; color: #495057;">
+        類似セクションを非表示にする
+      </button>
+    </div>
+  <% end %>
+
   <%# --- 「類似」画像一覧 --- %>
   <div id="similar-section-wrapper">
     <%= render 'similar_section', similar_illustrations: @similar_illustrations %>
@@ -191,6 +200,12 @@ document.addEventListener("DOMContentLoaded", () => {
         const wrapper = document.getElementById('similar-section-wrapper');
         if (wrapper && data.html !== undefined) {
           wrapper.innerHTML = data.html;
+
+          // 類似セクションの「表示切替ボタン」も非表示に
+          const toggleBtn = document.getElementById("toggle-similar-btn");
+          if (toggleBtn && (!data.html || data.html.trim() === "")) {
+            toggleBtn.parentElement.remove();
+          }
         }
 
         // 選択モードOFF
@@ -244,6 +259,19 @@ document.addEventListener("DOMContentLoaded", () => {
     const deleteBtn = e.target.closest(".single-delete-btn");
     const coverBtn = e.target.closest(".set-cover-btn");
     const bulkBtn = e.target.closest("#bulk-delete-btn");
+    const toggleSimilarBtn = e.target.closest("#toggle-similar-btn");
+
+    // 類似セクションの表示／非表示切り替え
+    if (toggleSimilarBtn) {
+      e.preventDefault();
+      const similarWrapper = document.getElementById("similar-section-wrapper");
+      if (similarWrapper) {
+        const isHidden = similarWrapper.style.display === "none";
+        similarWrapper.style.display = isHidden ? "block" : "none";
+        toggleSimilarBtn.innerText = isHidden ? "類似セクションを非表示にする" : "類似セクションを表示する";
+      }
+      return;
+    }
 
     // 削除ボタン
     if (deleteBtn) {
