@@ -108,6 +108,8 @@ GEM
       reline (>= 0.3.8)
     dhash-vips (0.2.4.0)
       ruby-vips (~> 2.0, != 2.1.1, != 2.1.0)
+    diff-lcs (1.6.2)
+    docile (1.4.1)
     drb (2.2.3)
     erb (6.0.1)
     erubi (1.13.1)
@@ -224,6 +226,23 @@ GEM
     reline (0.6.3)
       io-console (~> 0.5)
     rexml (3.4.4)
+    rspec-core (3.13.6)
+      rspec-support (~> 3.13.0)
+    rspec-expectations (3.13.5)
+      diff-lcs (>= 1.2.0, < 2.0)
+      rspec-support (~> 3.13.0)
+    rspec-mocks (3.13.8)
+      diff-lcs (>= 1.2.0, < 2.0)
+      rspec-support (~> 3.13.0)
+    rspec-rails (7.1.1)
+      actionpack (>= 7.0)
+      activesupport (>= 7.0)
+      railties (>= 7.0)
+      rspec-core (~> 3.13)
+      rspec-expectations (~> 3.13)
+      rspec-mocks (~> 3.13)
+      rspec-support (~> 3.13)
+    rspec-support (3.13.7)
     ruby-vips (2.3.0)
       ffi (~> 1.12)
       logger
@@ -235,6 +254,12 @@ GEM
       rexml (~> 3.2, >= 3.2.5)
       rubyzip (>= 1.2.2, < 4.0)
       websocket (~> 1.0)
+    simplecov (0.22.0)
+      docile (~> 1.1)
+      simplecov-html (~> 0.11)
+      simplecov_json_formatter (~> 0.1)
+    simplecov-html (0.13.2)
+    simplecov_json_formatter (0.1.4)
     sprockets (4.2.2)
       concurrent-ruby (~> 1.0)
       logger
@@ -282,7 +307,9 @@ DEPENDENCIES
   mysql2 (~> 0.5)
   puma (>= 5.0)
   rails (~> 7.1.6)
+  rspec-rails
   selenium-webdriver
+  simplecov
   sprockets-rails
   stimulus-rails
   turbo-rails

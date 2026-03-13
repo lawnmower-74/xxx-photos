@@ -1,0 +1,57 @@
+name: RSpecによる自動テスト
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main", "develop" ]
+
+jobs:
+  test:
+    name: テスト実行ジョブ
+    runs-on: ubuntu-latest
+
+    services:
+      db:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: xxx_photos_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+      - name: ソースコードの取得
+        uses: actions/checkout@v4
+
+      - name: OSライブラリのインストール
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y libmariadb-dev libvips-dev exiftool
+      
+      - name: Ruby環境のセットアップ
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2.2'
+          bundler-cache: true
+
+      - name: データベースの準備
+        run: |
+          chmod +x bin/rails
+          bin/rails db:prepare
+        env:
+          RAILS_ENV: test
+          DATABASE_PASSWORD: password
+          DATABASE_HOST: 127.0.0.1 
+
+      - name: テスト(RSpec)を実行
+        run: bundle exec rspec
+        env:
+          RAILS_ENV: test
+          DATABASE_PASSWORD: password
+          DATABASE_HOST: 127.0.0.1
