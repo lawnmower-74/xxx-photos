@@ -13,8 +13,6 @@
 
 よくわからん理由での垢BAN、あと単に高い(￥)とか、、やだな～から作成  
 
-コスト＆パフォーマンスを追いつつ気ままに遊んだり
-
 ---
 
 ## 開発用
@@ -47,12 +45,29 @@ docker compose up
 docker exec -it app rails c
 ```
 
+## テスト用
+
+### RSpec
+
+```bash
+docker compose run --rm app rails db:migrate RAILS_ENV=test
+```
+
+```bash
+docker compose run --rm app bundle exec rspec
+```
+
+テスト終了後、DBにデータを残したい場合
+```ruby
+# spec\rails_helper.rb
+config.use_transactional_fixtures = false
+```
+
 ---
 
 ## ドキュメント
 
 ### ER図
-
 ![ER図](docs/public/database-schema.svg)
 
 

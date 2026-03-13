@@ -48,16 +48,18 @@ class IllustrationsController < ApplicationController
     sleep_interval = 0.1 # リトライ間隔
 
     begin
+      safe_params = illustration_params
+
       # 入力値チェック
-      if params[:illustration].blank? || params[:illustration][:image].blank? || params[:illustration][:illustrator_name].blank?
+      if safe_params[:image].blank? || safe_params[:illustrator_name].blank?
         return render json: { error: "フォームに入力してください" }, status: :unprocessable_entity
       end
 
       # イラストレーター（フォルダ）検索／なければ新規作成
-      illustrator = Illustrator.find_or_create_by!(name: params[:illustration][:illustrator_name])
+      illustrator = Illustrator.find_or_create_by!(name: safe_params[:illustrator_name])
     
       # イラストレーターの子要素として画像を紐づけ
-      @illustration = illustrator.illustrations.build(image: params[:illustration][:image])
+      @illustration = illustrator.illustrations.build(image: safe_params[:image])
     
       # アップロード（DB・Storageともに）
       if @illustration.save
@@ -114,6 +116,7 @@ class IllustrationsController < ApplicationController
   
       html = render_to_string(
         partial: 'illustrations/similar_section',
+        formats: [:html],
         locals: { 
           similar_illustrations: @similar_illustrations
         }
