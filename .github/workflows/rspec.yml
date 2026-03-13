@@ -42,6 +42,7 @@ jobs:
 
       - name: データベースの準備
         run: |
+          chmod +x bin/rails
           bin/rails db:prepare
         env:
           RAILS_ENV: test
