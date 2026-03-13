@@ -29,16 +29,16 @@ jobs:
       - name: ソースコードの取得
         uses: actions/checkout@v4
 
+      - name: OSライブラリのインストール
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y libmariadb-dev libvips-dev exiftool
+      
       - name: Ruby環境のセットアップ
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.2.2'
           bundler-cache: true
-
-      - name: OSライブラリのインストール
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y libmariadb-dev libvips-dev exiftool
 
       - name: データベースの準備
         run: |
