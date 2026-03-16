@@ -109,6 +109,31 @@ document.addEventListener("DOMContentLoaded", () => {
   const bulkDeleteBtn = document.getElementById("bulk-delete-btn");
   const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
+  const toggleSimilarBtn = document.getElementById("toggle-similar-btn");
+  const similarWrapper = document.getElementById("similar-section-wrapper");
+  const STORAGE_KEY = "similar_section_visible";
+
+  // ===================================
+  // 類似セクションの表示状態を管理
+  // ===================================
+  const initSimilarSection = () => {
+    if (!similarWrapper || !toggleSimilarBtn) return;
+
+    // ローカルストレージから状態を取得 (デフォルトは表示)
+    const savedState = localStorage.getItem(STORAGE_KEY) || 'show';
+
+    if (savedState === 'hide') {
+      similarWrapper.style.display = "none";
+      toggleSimilarBtn.innerText = "類似セクションを表示する";
+
+    } else {
+      similarWrapper.style.display = "block";
+      toggleSimilarBtn.innerText = "類似セクションを非表示にする";
+    }
+  };
+
+  initSimilarSection();
+
   // ===================================
   // 画像削除処理
   // ===================================
@@ -266,9 +291,15 @@ document.addEventListener("DOMContentLoaded", () => {
       e.preventDefault();
       const similarWrapper = document.getElementById("similar-section-wrapper");
       if (similarWrapper) {
+        // ※ボタンクリック時の状態
         const isHidden = similarWrapper.style.display === "none";
+
+        // 状態を反転
         similarWrapper.style.display = isHidden ? "block" : "none";
         toggleSimilarBtn.innerText = isHidden ? "類似セクションを非表示にする" : "類似セクションを表示する";
+        
+        // 反転後の状態をローカルストレージに保存
+        localStorage.setItem(STORAGE_KEY, isHidden ? 'show' : 'hide');
       }
       return;
     }
