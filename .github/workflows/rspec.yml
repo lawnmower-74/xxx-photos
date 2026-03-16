@@ -47,7 +47,7 @@ jobs:
         env:
           RAILS_ENV: test
           DATABASE_PASSWORD: password
-          DATABASE_HOST: 127.0.0.1 
+          DATABASE_HOST: 127.0.0.1
 
       - name: テスト(RSpec)を実行
         run: bundle exec rspec
