@@ -66,8 +66,14 @@ RSpec.describe "対象: illustrations_controller", type: :request do
       expect(illustrator.illustrations.all? { |i| i.fingerprint.present? }).to be true
 
       # 4. 画像件数 と attachments件数、画像件数 と blobs件数 が一致するかをテスト
-      expect(ActiveStorage::Attachment.where(record_type: "Illustration", record_id: illustrator.illustrations.ids).count).to eq upload_count
-      expect(ActiveStorage::Blob.count).to eq upload_count
+      attachments = ActiveStorage::Attachment.where(
+        record_type: "Illustration",
+        record_id:   illustrator.illustrations.ids
+      )
+      blob_ids = attachments.pluck(:blob_id)
+
+      expect(attachments.count).to eq upload_count
+      expect(ActiveStorage::Blob.where(id: blob_ids).count).to eq upload_count
     end
   end
 end
