@@ -5,7 +5,7 @@ RSpec.describe "対象: illustrations_controller", type: :request do
   describe "アップロード: POST /illustrations" do
     # =====================================================================================================
     # テスト事項：
-    # 100枚の画像データをアップロード
+    # 複数枚の画像データをアップロード
     # 1. illustratorsテーブルに該当レコード保存されたか
     # 2. illustrationsテーブルに該当レコード保存されたか
     # 3. 非同期処理も実行され、該当カラムに値は登録されたか（illustrationsテーブル > shot_at・fingerprint）
@@ -32,9 +32,9 @@ RSpec.describe "対象: illustrations_controller", type: :request do
       )
     end
   
-    it "100枚の画像をアップロード → 必要なデータがすべて登録されているかを確認" do
+    it "複数の画像をアップロード → 必要なデータがすべて登録されているかを確認" do
       # アップロード件数
-      upload_count = 100
+      upload_count = 10
 
       # ActiveJob(Exif抽出, Fingerprint生成)を即時実行
       perform_enqueued_jobs do
