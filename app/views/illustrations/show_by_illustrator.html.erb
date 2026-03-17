@@ -104,7 +104,9 @@
   }
 </style>
 
-<script>
+<script type="module">
+import { FolderManager } from "folder_manager";
+
 document.addEventListener("DOMContentLoaded", () => {
   const bulkDeleteBtn = document.getElementById("bulk-delete-btn");
   const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
@@ -112,6 +114,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const toggleSimilarBtn = document.getElementById("toggle-similar-btn");
   const similarWrapper = document.getElementById("similar-section-wrapper");
   const STORAGE_KEY = "similar_section_visible";
+
+  const folderName = "<%= @illustrator.name %>";
 
   // ===================================
   // 類似セクションの表示状態を管理
@@ -203,7 +207,7 @@ document.addEventListener("DOMContentLoaded", () => {
         },
         body: JSON.stringify({ 
           ids: ids, // ※画像のID
-          illustrator_name: "<%= @illustrator.name %>" 
+          illustrator_name: folderName
         })
       });
 
@@ -252,27 +256,13 @@ document.addEventListener("DOMContentLoaded", () => {
   // アルバムカバー設定処理
   // ===================================
   const setFolderCover = async (imageId) => {
-    const folderName = "<%= @illustrator.name %>";
+    const success = await FolderManager.setCover(folderName, imageId, csrfToken);
 
-    try {
-      const response = await fetch(`/folders/${encodeURIComponent(folderName)}/set_cover`, {
-        method: "PATCH",
-        headers: { 
-          "X-CSRF-Token": csrfToken,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ image_id: imageId })
-      });
-
-      if (response.ok) {
-        alert("アルバムの表紙を更新しました！");
-        window.location.reload(); 
-      } else {
-        alert("設定に失敗しました。");
-      }
-    } catch (err) {
-      console.error("カバー設定エラー: ", err);
-      alert("通信エラーが発生しました。");
+    if (success) {
+      alert("アルバムの表紙を更新しました！");
+      window.location.reload(); 
+    } else {
+      alert("設定に失敗しました。");
     }
   };
 
