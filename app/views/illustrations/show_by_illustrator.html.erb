@@ -109,13 +109,12 @@ import { FolderManager } from "folder_manager";
 
 document.addEventListener("DOMContentLoaded", () => {
   const bulkDeleteBtn = document.getElementById("bulk-delete-btn");
-  const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
   const toggleSimilarBtn = document.getElementById("toggle-similar-btn");
   const similarWrapper = document.getElementById("similar-section-wrapper");
   const STORAGE_KEY = "similar_section_visible";
 
-  const folderName = "<%= @illustrator.name %>";
+  const folderName = "<%= j(@illustrator.name) %>";
 
   // ===================================
   // 類似セクションの表示状態を管理
@@ -153,7 +152,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll(".illustration-item").forEach(item => {
       const link = item.querySelector(".spotlight");
       item.classList.toggle("selecting", isSelecting);
-      link.classList.toggle("disable-gallery", isSelecting);
+      link?.classList.toggle("disable-gallery", isSelecting);
     });
 
     // 一括削除ボタンの表示／非表示の切り替え
