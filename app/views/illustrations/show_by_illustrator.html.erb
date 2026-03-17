@@ -106,6 +106,7 @@
 
 <script type="module">
 import { FolderManager } from "folder_manager";
+import { ImageManager } from "image_manager";
 
 document.addEventListener("DOMContentLoaded", () => {
   const bulkDeleteBtn = document.getElementById("bulk-delete-btn");
@@ -198,55 +199,38 @@ document.addEventListener("DOMContentLoaded", () => {
     setBulkDeleteBtnState("loading")
 
     try {
-      const response = await fetch("/illustrations/bulk_destroy", {
-        method: "DELETE",
-        headers: { 
-          "X-CSRF-Token": csrfToken,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ 
-          ids: ids, // ※画像のID
-          illustrator_name: folderName
-        })
+      // -------------------------------------------------
+      // 実際のリクエストは ImageManager で行う
+      // -------------------------------------------------
+      const data = await ImageManager.bulkDelete(ids, folderName, csrfToken);
+
+      // 一覧から削除した要素を消す
+      ids.forEach(id => {
+        const item = document.getElementById(`item-${id}`);
+        if (item) {
+          item.style.transition = "all 0.3s ease";
+          item.style.opacity = "0";
+          item.style.transform = "scale(0.8)";
+          setTimeout(() => item.remove(), 300);
+        }
       });
 
-      if (response.ok) {
-        const data = await response.json();
+      // 削除後に類似画像がなくなれば「類似セクション」を非表示に
+      if (similarWrapper && data.html !== undefined) {
+        similarWrapper.innerHTML = data.html;
 
-        // 一覧から削除した要素を消す
-        ids.forEach(id => {
-          const item = document.getElementById(`item-${id}`);
-          if (item) {
-            item.style.transition = "all 0.3s ease";
-            item.style.opacity = "0";
-            item.style.transform = "scale(0.8)";
-            setTimeout(() => item.remove(), 300);
-          }
-        });
-
-        // 削除後に類似画像がなくなれば「類似セクション」を非表示に
-        const wrapper = document.getElementById('similar-section-wrapper');
-        if (wrapper && data.html !== undefined) {
-          wrapper.innerHTML = data.html;
-
-          // 類似セクションの「表示切替ボタン」も非表示に
-          const toggleBtn = document.getElementById("toggle-similar-btn");
-          if (toggleBtn && (!data.html || data.html.trim() === "")) {
-            toggleBtn.parentElement.remove();
-          }
+        // 類似セクションの「表示切替ボタン」も非表示に
+        const toggleBtn = document.getElementById("toggle-similar-btn");
+        if (toggleBtn && (!data.html || data.html.trim() === "")) {
+          toggleBtn.parentElement.remove();
         }
-
-        // 選択モードOFF
-        setTimeout(() => toggleSelectingMode(), 300);
-
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        alert("削除に失敗しました: " + (errorData.error || "サーバーエラー"));
-        toggleSelectingMode(); // 選択モードON（※チェックしたものが残っていた場合）
       }
+
+      // 選択モードOFF
+      setTimeout(() => toggleSelectingMode(), 300);
+
     } catch (err) {
-      console.error("JS関連のエラー: ", err);
-      alert("エラーが発生しました。");
+      alert(err.message);
       toggleSelectingMode(); // 選択モードON（※チェックしたものが残っていた場合）
     }
   };
@@ -255,6 +239,9 @@ document.addEventListener("DOMContentLoaded", () => {
   // アルバムカバー設定処理
   // ===================================
   const setFolderCover = async (imageId) => {
+    // -------------------------------------------------
+    // 実際のリクエストは FolderManager で行う
+    // -------------------------------------------------
     const success = await FolderManager.setCover(folderName, imageId, csrfToken);
 
     if (success) {
