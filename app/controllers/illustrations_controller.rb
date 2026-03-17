@@ -1,5 +1,5 @@
 class IllustrationsController < ApplicationController
-  before_action :set_illustration, only: %i[ show edit update destroy ]
+  before_action :set_illustration, only: %i[ show edit update ]
 
   def index
     # ※イラストレーター = フォルダ
@@ -132,8 +132,8 @@ class IllustrationsController < ApplicationController
   end
 
   def destroy
-    @illustration = Illustration.find(params[:id])
-    @illustration.destroy
+    @illustrator = Illustrator.find_by!(name: params[:id])
+    @illustrator.destroy
     render json: { message: "削除しました" }, status: :ok
   end
 
