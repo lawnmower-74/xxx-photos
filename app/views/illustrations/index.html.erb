@@ -148,6 +148,9 @@ document.addEventListener("DOMContentLoaded", () => {
       // アップロードボタンを「アップロード中」の状態にする
       setSubmitBtnState("loading");
 
+      // ※アップロード時には失敗リストを非表示化
+      errorList.innerHTML = "";
+
       // -------------------------------------------------
       // 実際のリクエストは ImageUploader で行う
       // -------------------------------------------------
@@ -177,6 +180,9 @@ document.addEventListener("DOMContentLoaded", () => {
               li.textContent = imgName;
               ul.appendChild(li);
             });
+
+          } else {
+            errorList.innerHTML = "";
           }
         }
       );
