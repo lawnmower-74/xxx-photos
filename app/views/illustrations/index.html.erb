@@ -101,6 +101,7 @@
 
 <script type="module">
 import { ImageUploader } from "uploader";
+import { FolderManager } from "folder_manager";
 
 document.addEventListener("DOMContentLoaded", () => {
   const uploadForm = document.getElementById("upload-form");
@@ -198,40 +199,30 @@ document.addEventListener("DOMContentLoaded", () => {
   // ===================================
   // フォルダ削除
   // ===================================
-  const deleteFolder = async (name) => {
-    if (!window.confirm(`フォルダ「${name}」を削除してもよろしいですか？\n※中の画像もすべて削除されます。`)) return;
+  const handleDelete = async (illustratorName) => {    
+    if (!window.confirm(`フォルダ「${illustratorName}」を削除してもよろしいですか？\n※中の画像もすべて削除されます。`)) return;
 
     // 対象の フォルダ（カード枠） と 削除アニメーション用オーバーレイ を取得
-    const element = document.getElementById(`folder-${name}`);
+    const element = document.getElementById(`folder-${illustratorName}`);
     const overlay = element ? element.querySelector(".delete-overlay") : null;
 
     // オーバーレイを表示
     if (overlay) overlay.style.display = "flex";
 
-    try {
-      const response = await fetch(`/folders/${encodeURIComponent(name)}`, {
-        method: "DELETE",
-        headers: { 
-          "X-CSRF-Token": csrfToken,
-          "Content-Type": "application/json"
-        }
-      });
+    // -------------------------------------------------
+    // 実際のリクエストは FolderManager で行う
+    // -------------------------------------------------
+    const success = await FolderManager.delete(illustratorName, csrfToken);
 
-      if (response.ok) {
-        const element = document.getElementById(`folder-${name}`);
-        if (element) {
-          element.style.transition = "all 0.3s ease";
-          element.style.opacity = "0";
-          element.style.transform = "scale(0.8)";
-          setTimeout(() => element.remove(), 300);
-        }
-      } else {
-        alert("削除に失敗しました。");
-        if (overlay) overlay.style.display = "none";
+    if (success) {
+      if (element) {
+        element.style.transition = "all 0.3s ease";
+        element.style.opacity = "0";
+        element.style.transform = "scale(0.8)";
+        setTimeout(() => element.remove(), 300);
       }
-    } catch (err) {
-      console.error("通信エラー: ", err);
-      alert("通信エラーが発生しました。");
+    } else {
+      alert("削除に失敗しました。");
       if (overlay) overlay.style.display = "none";
     }
   };
@@ -242,7 +233,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (btn) {
       e.stopPropagation(); // フォルダ詳細への遷移を止める
       e.preventDefault();
-      deleteFolder(btn.dataset.name);
+      handleDelete(btn.dataset.name);
     }
   });
   

@@ -132,8 +132,8 @@ class IllustrationsController < ApplicationController
   end
 
   def destroy
-    @illustration = Illustration.find(params[:id])
-    @illustration.destroy
+    @illustrator = Illustrator.find(params[:id])
+    @illustrator.destroy
     render json: { message: "削除しました" }, status: :ok
   end
 

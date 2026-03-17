@@ -1,4 +1,3 @@
-// Controller へのリクエストを実行。進行状況を View に返す仲介役
 export const ImageUploader = {
   async bulkUpload(images, illustratorName, csrfToken, onProgress) {
     // 進捗管理用
