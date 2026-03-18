@@ -35,6 +35,9 @@ RSpec.describe "対象: illustrations_controller", type: :request do
     end
   
     it "複数の画像をアップロード → 必要なデータがすべて登録されているかを確認" do
+      # サムネ生成履歴をDB（variant_records）に残すための設定
+      expect(ActiveStorage.track_variants).to be(true)
+
       # アップロード数
       upload_count = 10
 
