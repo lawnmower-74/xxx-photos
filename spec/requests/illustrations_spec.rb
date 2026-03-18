@@ -14,7 +14,7 @@ RSpec.describe "対象: illustrations_controller", type: :request do
     # =====================================================================================================
 
     # 開始前にテスト対象のデータを一通り削除
-    before(:all) do
+    before do
       ActiveStorage::VariantRecord.delete_all
       ActiveStorage::Attachment.delete_all
       ActiveStorage::Blob.delete_all
