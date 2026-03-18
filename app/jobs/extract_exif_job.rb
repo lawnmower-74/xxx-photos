@@ -13,12 +13,18 @@ class ExtractExifJob < ApplicationJob
     begin
       illustration.image.open do |file|
         # EXIF情報から「撮影日時」抽出
-        output, status = Open3.capture2(
+        output, stderr, status = Open3.capture3(
           'exiftool', '-s3', '-d', '%Y-%m-%d %H:%M:%S', '-DateTimeOriginal', file.path.to_s
         )
 
-        next unless status.success? && output.present?
+        unless status.success?
+          error_detail = stderr.presence || output.presence || "exit_status=#{status.exitstatus}"
+          raise "「撮影日時」取得コマンド失敗: #{error_detail}"
+        end
 
+        # 「撮影日時」が空の場合は終了
+        next if output.blank?
+        
         # 取得データの整形
         times = output.split("\n").map(&:strip).reject(&:empty?)
         shot_date = Time.zone.parse(times.first) if times.any?
