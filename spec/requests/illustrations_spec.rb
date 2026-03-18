@@ -41,7 +41,7 @@ RSpec.describe "対象: illustrations_controller", type: :request do
       # アップロード数
       upload_count = 10
 
-      # ActiveJob(Exif抽出, Fingerprint生成)を即時実行
+      # ActiveJob(Exif抽出, Fingerprint生成, サムネ生成)を即時実行
       perform_enqueued_jobs do
         expect {
           upload_count.times do
@@ -59,7 +59,7 @@ RSpec.describe "対象: illustrations_controller", type: :request do
 
       # --- 最終的な状態の検証 ---
 
-      # 1. テストによって登録されたイラストレーター(フォルダ)数が 1 かどうか、またそのnameがアップしたものと一致しているかをテスト
+      # 1. テストによって登録されたイラストレーター(フォルダ)数が 1 かどうか、またその name がアップしたものと一致しているかをテスト
       expect(Illustrator.count).to eq 1
       illustrator = Illustrator.first
       expect(illustrator.name).to eq illustrator_name
