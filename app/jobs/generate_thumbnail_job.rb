@@ -14,10 +14,10 @@ class GenerateThumbnailJob < ApplicationJob
 
     rescue ActiveRecord::Deadlocked => e
       Rails.logger.warn "[GenerateThumbnailJob]-デッドロック検知。リトライします (ID: #{illustration_id}): #{e.message}"
-      raise e
+      raise
     rescue => e
       Rails.logger.error "サムネ生成に失敗 (ID: #{illustration_id}): #{e.message}"
-      raise e
+      raise
     end
   end
 end

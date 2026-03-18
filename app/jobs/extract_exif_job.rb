@@ -35,10 +35,10 @@ class ExtractExifJob < ApplicationJob
       
     rescue ActiveRecord::Deadlocked => e
       Rails.logger.warn "[ExtractExifJob]-デッドロック検知。リトライします (ID: #{illustration_id}): #{e.message}"
-      raise e
+      raise
     rescue => e
       Rails.logger.error "「撮影日時」取得失敗 (ID: #{illustration_id}): #{e.message}"
-      raise e
+      raise
     end
   end
 end

@@ -31,10 +31,10 @@ class GenerateFingerprintJob < ApplicationJob
       
     rescue ActiveRecord::Deadlocked => e
       Rails.logger.warn "[GenerateFingerprintJob]-デッドロック検知。リトライします (ID: #{illustration_id}): #{e.message}"
-      raise e
+      raise
     rescue => e
       Rails.logger.error "画像の特徴値生成に失敗 (ID: #{illustration_id}): #{e.message}"
-      raise e
+      raise
     end
   end
 end
