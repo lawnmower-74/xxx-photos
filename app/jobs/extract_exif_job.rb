@@ -14,18 +14,17 @@ class ExtractExifJob < ApplicationJob
       illustration.image.open do |file|
         # EXIF情報から「撮影日時」抽出
         output, status = Open3.capture2(
-          'exiftool', '-s3', '-d', '%Y-%m-%d %H:%M:%S', '-DateTimeOriginal', file.path
+          'exiftool', '-s3', '-d', '%Y-%m-%d %H:%M:%S', '-DateTimeOriginal', file.path.to_s
         )
 
-        if status.success? && output.present?
+        next unless status.success? && output.present?
 
-          times = output.split("\n").map(&:strip).reject(&:empty?)
-          if times.any?
-            shot_date = Time.zone.parse(times.first)
-            # 「撮影日時」用カラムを更新
-            illustration.update_column(:shot_at, shot_date)
-          end
-        end
+        # 取得データの整形
+        times = output.split("\n").map(&:strip).reject(&:empty?)
+        shot_date = Time.zone.parse(times.first) if times.any?
+
+        # 「撮影日時」用カラムを更新
+        illustration.update_column(:shot_at, shot_date) if shot_date.present?
       end
       
     rescue ActiveRecord::Deadlocked => e
