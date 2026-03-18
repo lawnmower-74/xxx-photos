@@ -24,7 +24,7 @@ class Illustration < ApplicationRecord
   validates :illustrator_id, presence: true
 
   private
-  
+
   # 「カバー画像」として指名されていた場合、設定を空（nil）に更新する
   def clear_illustrator_cover_id
     if illustrator.cover_illustration_id == self.id
@@ -36,5 +36,7 @@ class Illustration < ApplicationRecord
   def generate_thumbnail
     return unless image.attached?
     image.variant(resize_to_limit: [300, 300]).processed
+  rescue => e
+    Rails.logger.error("サムネ生成失敗: ##{id}: #{e.class} - #{e.message}")
   end
 end
