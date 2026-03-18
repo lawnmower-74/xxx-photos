@@ -13,9 +13,6 @@ class GenerateFingerprintJob < ApplicationJob
         # 画像の「明暗」をピクセルレベルで数値化
         raw_hash = DHashVips::IDHash.fingerprint(file.path)
         
-        # ※ハッシュの場合（数値でない場合）に備え
-        raw_hash = raw_hash[:fingerprint] if raw_hash.is_a?(Hash)
-
         # 生成された 256bit を 4分割（画像を4分割してるイメージ）
         chunk1 = (raw_hash >> 192) & 0xFFFFFFFFFFFFFFFF # 画像の「左上」あたりの特徴（192~255bit）
         chunk2 = (raw_hash >> 128) & 0xFFFFFFFFFFFFFFFF # 画像の「右上」あたりの特徴（128~191bit）
@@ -34,10 +31,10 @@ class GenerateFingerprintJob < ApplicationJob
       
     rescue ActiveRecord::Deadlocked => e
       Rails.logger.warn "[GenerateFingerprintJob]-デッドロック検知。リトライします (ID: #{illustration_id}): #{e.message}"
-      # デッドロック発生時には retry_on に報告しリトライを実行させる
-      raise e
+      raise
     rescue => e
       Rails.logger.error "画像の特徴値生成に失敗 (ID: #{illustration_id}): #{e.message}"
+      raise
     end
   end
 end
