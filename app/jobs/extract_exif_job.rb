@@ -1,3 +1,5 @@
+require 'open3'
+
 class ExtractExifJob < ApplicationJob
   queue_as :default
 
@@ -11,13 +13,18 @@ class ExtractExifJob < ApplicationJob
     begin
       illustration.image.open do |file|
         # EXIF情報から「撮影日時」抽出
-        output = `exiftool -s3 -d "%Y-%m-%d %H:%M:%S" -DateTimeOriginal "#{file.path}"`
-        times = output.split("\n").map(&:strip).reject(&:empty?)
-        
-        if times.any?
-          shot_date = Time.zone.parse(times.first)
-          # 「撮影日時」用カラムを更新
-          illustration.update_column(:shot_at, shot_date)
+        output, status = Open3.capture2(
+          'exiftool', '-s3', '-d', '%Y-%m-%d %H:%M:%S', '-DateTimeOriginal', file.path
+        )
+
+        if status.success? && output.present?
+
+          times = output.split("\n").map(&:strip).reject(&:empty?)
+          if times.any?
+            shot_date = Time.zone.parse(times.first)
+            # 「撮影日時」用カラムを更新
+            illustration.update_column(:shot_at, shot_date)
+          end
         end
       end
       
