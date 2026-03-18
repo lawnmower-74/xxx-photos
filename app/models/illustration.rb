@@ -8,6 +8,12 @@ class Illustration < ApplicationRecord
   # これによりactive_storage_attachmentsのrecord_idと紐づく
   has_one_attached :image
 
+  # ==================================
+  # コールバック
+  # ==================================
+  # 画像アップロード後にサムネイルを生成
+  after_commit :generate_thumbnail, on: [:create]
+
   # 画像削除時に実行
   before_destroy :clear_illustrator_cover_id
 
@@ -18,10 +24,19 @@ class Illustration < ApplicationRecord
   validates :illustrator_id, presence: true
 
   private
+
   # 「カバー画像」として指名されていた場合、設定を空（nil）に更新する
   def clear_illustrator_cover_id
     if illustrator.cover_illustration_id == self.id
       illustrator.update_column(:cover_illustration_id, nil)
     end
+  end
+
+  # サムネの生成
+  def generate_thumbnail
+    return unless image.attached?
+    image.variant(resize_to_limit: [300, 300]).processed
+  rescue => e
+    Rails.logger.error("サムネ生成失敗: ##{id}: #{e.class} - #{e.message}")
   end
 end
