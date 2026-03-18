@@ -63,11 +63,14 @@ class IllustrationsController < ApplicationController
     
       # アップロード（DB・Storageともに）
       if @illustration.save
-        # 「撮影日時」の抽出・保存を非同期で実行
+        # 「撮影日時」の抽出・保存
         ExtractExifJob.perform_later(@illustration.id)
 
-        # # 「見た目の特徴値（ハッシュ）」の計算・保存を非同期で実行
+        # 「見た目の特徴値（類似検索に使用）」の計算・保存
         GenerateFingerprintJob.perform_later(@illustration.id)
+
+        # サムネの生成・保存
+        GenerateThumbnailJob.perform_later(@illustration.id)
     
         render json: { message: "アップロード完了" }, status: :created
       else

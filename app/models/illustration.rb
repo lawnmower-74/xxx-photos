@@ -11,9 +11,6 @@ class Illustration < ApplicationRecord
   # ==================================
   # コールバック
   # ==================================
-  # 画像アップロード後にサムネイルを生成
-  after_commit :generate_thumbnail, on: [:create]
-
   # 画像削除時に実行
   before_destroy :clear_illustrator_cover_id
 
@@ -32,11 +29,4 @@ class Illustration < ApplicationRecord
     end
   end
 
-  # サムネの生成
-  def generate_thumbnail
-    return unless image.attached?
-    image.variant(resize_to_limit: [300, 300]).processed
-  rescue => e
-    Rails.logger.error("サムネ生成失敗: ##{id}: #{e.class} - #{e.message}")
-  end
 end
