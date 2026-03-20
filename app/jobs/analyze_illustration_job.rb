@@ -3,7 +3,12 @@ require "open3"
 class AnalyzeIllustrationJob < ApplicationJob
   queue_as :default
 
-  retry_on ActiveRecord::Deadlocked, StandardError, wait: 0.1.seconds, attempts: 5
+  # リトライ対象の絞り込み
+  class ProcessingError < StandardError; end
+
+  retry_on ActiveRecord::Deadlocked, wait: :exponentially_longer, attempts: 5
+  retry_on ProcessingError, wait: 5.seconds, attempts: 5
+
 
   def perform(illustration_id)
     @illustration = Illustration.find_by(id: illustration_id)
@@ -23,17 +28,18 @@ class AnalyzeIllustrationJob < ApplicationJob
       # サムネ生成・保存
       generate_thumbnail
 
+    # デッドロック時のリトライ
     rescue ActiveRecord::Deadlocked => e
       Rails.logger.warn "[#{executions}/5] デッドロック発生 (ID: #{@illustration.id}): \n#{e.message}"
       raise
       
-    rescue => e
-      if executions >= 5
-        Rails.logger.error "非同期処理 失敗 > #{@illustration.id}: \n#{e.message}"
-      else
-        Rails.logger.warn "[#{executions}/5] エラー発生 (ID: #{@illustration.id}): \n#{e.message}"
-      end
+    # 各処理失敗時のリトライ
+    rescue ProcessingError => e
+      Rails.logger.warn "[#{executions}/5] エラー発生 (ID: #{@illustration.id}): \n#{e.message}"
       raise
+
+    rescue => e
+      Rails.logger.error "非同期処理 失敗 > #{@illustration.id}: \n#{e.message}"
     end  
   end
 
@@ -64,7 +70,7 @@ class AnalyzeIllustrationJob < ApplicationJob
     else
       # ※外部OSで実行したコマンドの失敗は rescue で拾えないため記述
       error_detail = stderr.presence || output.presence || "exit_status=#{status.exitstatus}"
-      raise "「撮影日時」抽出失敗: #{error_detail}"
+      raise ProcessingError, "「撮影日時」抽出失敗: #{error_detail}"
     end
   end
 
@@ -92,7 +98,7 @@ class AnalyzeIllustrationJob < ApplicationJob
       @illustration.fingerprint = final_hash
       
     rescue => e
-      raise "fingerprint生成失敗: #{e.message}"
+      raise ProcessingError, "fingerprint生成失敗: #{e.message}"
     end
   end
 
@@ -103,6 +109,6 @@ class AnalyzeIllustrationJob < ApplicationJob
     @illustration.image.variant(resize_to_limit: [300, 300]).processed
 
     rescue => e
-      raise "サムネ生成失敗: #{e.message}"
+      raise ProcessingError, "サムネ生成失敗: #{e.message}"
   end
 end
