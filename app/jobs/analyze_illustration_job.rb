@@ -42,9 +42,9 @@ class AnalyzeIllustrationJob < ApplicationJob
       Rails.logger.error "非同期処理 失敗 > #{@illustration.id}: \n#{e.message}"
       raise
     end
+  end
 
   private
-
   # =========================================================
   # EXIF情報から「撮影日時」抽出
   # =========================================================
