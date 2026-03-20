@@ -40,8 +40,8 @@ class AnalyzeIllustrationJob < ApplicationJob
 
     rescue => e
       Rails.logger.error "非同期処理 失敗 > #{@illustration.id}: \n#{e.message}"
-    end  
-  end
+      raise
+    end
 
   private
 
