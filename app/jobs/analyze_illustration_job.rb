@@ -28,18 +28,26 @@ class AnalyzeIllustrationJob < ApplicationJob
       # サムネ生成・保存
       generate_thumbnail
 
-    # デッドロック時のリトライ
+    # デッドロック時
     rescue ActiveRecord::Deadlocked => e
-      Rails.logger.warn "[#{executions}/5] デッドロック発生 (ID: #{@illustration.id}): \n#{e.message}"
+      if executions >= 5
+        Rails.logger.error "画像解析 失敗（原因: デッドロック） > #{@illustration.id}: \n#{e.message}"
+      else
+        Rails.logger.warn "[#{executions}/5] デッドロック発生 (ID: #{@illustration.id}): \n#{e.message}"
+      end
       raise
       
-    # 各処理失敗時のリトライ
+    # 各処理失敗時
     rescue ProcessingError => e
-      Rails.logger.warn "[#{executions}/5] エラー発生 (ID: #{@illustration.id}): \n#{e.message}"
+      if executions >= 5
+        Rails.logger.error "画像解析 失敗（原因: 非同期処理） > #{@illustration.id}: \n#{e.message}"
+      else
+        Rails.logger.warn "[#{executions}/5] 処理一時失敗 (ID: #{@illustration.id}): #{e.message}"
+      end
       raise
 
     rescue => e
-      Rails.logger.error "非同期処理 失敗 > #{@illustration.id}: \n#{e.message}"
+      Rails.logger.error "画像解析 失敗 > #{@illustration.id}: \n#{e.message}"
       raise
     end
   end
