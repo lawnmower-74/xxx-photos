@@ -42,7 +42,7 @@ class AnalyzeIllustrationJob < ApplicationJob
       if executions >= 5
         Rails.logger.error "画像解析 失敗（原因: 非同期処理） > #{@illustration.id}: \n#{e.message}"
       else
-        Rails.logger.warn "[#{executions}/5] 処理一時失敗 (ID: #{@illustration.id}): #{e.message}"
+        Rails.logger.warn "[#{executions}/5] 処理一時失敗 (ID: #{@illustration.id}): \n#{e.message}"
       end
       raise
 
