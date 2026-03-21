@@ -9,4 +9,16 @@ class Illustrator < ApplicationRecord
   has_one :latest_illustration, -> { order(created_at: :desc) }, class_name: 'Illustration'
 
   validates :name, presence: true, uniqueness: true
+
+
+  # =====================================================
+  # イラストレーター（フォルダ）検索／なければ新規作成
+  # =====================================================
+  def self.find_or_create_illustrator_safely!(name)
+    Illustrator.find_or_create_by!(name: name)
+  
+  # ※作成のタイミングがかち合って422エラー発生することへの対策
+  rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
+    Illustrator.find_by!(name: name)
+  end
 end
