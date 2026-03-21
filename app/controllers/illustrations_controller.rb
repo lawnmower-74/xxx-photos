@@ -56,7 +56,7 @@ class IllustrationsController < ApplicationController
       end
 
       # イラストレーター（フォルダ）検索／なければ新規作成
-      illustrator = Illustrator.find_or_create_by!(name: safe_params[:illustrator_name])
+      illustrator = Illustrator.find_or_create_illustrator_safely!(safe_params[:illustrator_name])
     
       # イラストレーターの子要素として画像を紐づけ
       @illustration = illustrator.illustrations.build(image: safe_params[:image])
@@ -133,14 +133,16 @@ class IllustrationsController < ApplicationController
     render json: { message: "削除しました" }, status: :ok
   end
 
+  
   private
-    def set_illustration
-      @illustration = Illustration.find(params[:id])
-    end
 
-    def illustration_params
-      params.require(:illustration).permit(:illustrator_name, :image)
-    end
+  def set_illustration
+    @illustration = Illustration.find(params[:id])
+  end
+
+  def illustration_params
+    params.require(:illustration).permit(:illustrator_name, :image)
+  end
 
   # ==========================================
   # 類似画像（重複候補）の抽出
