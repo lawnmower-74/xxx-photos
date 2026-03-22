@@ -1,5 +1,10 @@
 export const ImageUploader = {
   async bulkUpload(images, illustratorName, csrfToken, onProgress) {
+
+    // 計測用 臨時追加 ========================================
+    const startTime = performance.now();
+    // =======================================================
+
     // 進捗管理用
     const totalImages = images.length;
     let completedCount = 0;
@@ -58,6 +63,17 @@ export const ImageUploader = {
 
     // すべてのワーカーの処理が終わるのを待つ
     await Promise.all(workers);
+
+    
+    // 計測用 臨時追加 ===========================================================================
+    const endTime = performance.now();
+    const durationInSeconds = ((endTime - startTime) / 1000).toFixed(2);
+    
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.log("【全アップロードリクエスト完了】");
+    console.log(`完了表示までの所要時間: ${durationInSeconds} 秒`);
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    // =======================================================================================
 
     return { 
       successCount: completedCount, 
