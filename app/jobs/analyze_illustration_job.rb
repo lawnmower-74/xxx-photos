@@ -28,6 +28,25 @@ class AnalyzeIllustrationJob < ApplicationJob
       # サムネ生成・保存
       generate_thumbnail
 
+     
+      # 測定のため臨時追加 ================================================================================================
+      done_exif = Illustration.where.not(shot_at: nil).count
+      done_fingerprint = Illustration.where.not(fingerprint: nil).count
+      total_illustrations = Illustration.count
+      done_thumbnails = ActiveStorage::VariantRecord.count
+
+      if done_exif == total_illustrations && done_fingerprint == total_illustrations && done_thumbnails == total_illustrations
+        total_latency = Time.current - @illustration.created_at
+
+        Rails.logger.info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        Rails.logger.info "【全バッチ完了】"
+        Rails.logger.info "完了数: #{total_illustrations} / #{total_illustrations} 枚"
+        Rails.logger.info "最後の一枚がアップされてから全Jopが完了するまでのタイムログ : #{total_latency.round(2)} 秒"
+        Rails.logger.info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      end
+      # =======================================================================================================================
+
+
     # デッドロック時
     rescue ActiveRecord::Deadlocked => e
       if executions >= 5
