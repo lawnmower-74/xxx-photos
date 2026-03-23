@@ -1,3 +1,5 @@
+require 'sidekiq/web'
+
 Rails.application.routes.draw do
 
   # トップページ：フォルダ一覧
@@ -36,4 +38,7 @@ Rails.application.routes.draw do
 
   # デフォルト設定
   get "up" => "rails/health#show", as: :rails_health_check
+
+  # Sidekiq管理画面
+  mount Sidekiq::Web => '/sidekiq'
 end

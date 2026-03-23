@@ -45,6 +45,13 @@ docker compose up
 docker exec -it app rails c
 ```
 
+```bash
+# 実行した瞬間に追記されたログだけを確認
+# n: 該当ログの前 n 行含む
+# m: 該当ログの後 m 行含む
+tail -n 0 -f log/development.log | grep --line-buffered -B 5 -A 5 "【全バッチ完了】"
+```
+
 ## テスト用
 
 ### RSpec

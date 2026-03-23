@@ -24,10 +24,14 @@ module App
     # config.time_zone = "Central Time (US & Canada)"
     # config.eager_load_paths << Rails.root.join("extras")
 
-    # サムネ作成用
+    # サムネ生成エンジンの指定
     config.active_storage.variant_processor = :vips
 
-    # 非同期処理（Job）を Rails内の別スレッド で並行して実行させる
-    config.active_job.queue_adapter = :async
+    # Active Storage の 各Job に 専用キュー をラベリング
+    config.active_storage.queues.analysis = :active_storage_analysis  # 画像アップロード時に実行されるJob
+    config.active_storage.queues.purge    = :active_storage_purge     # 画像削除時に実行されるJob
+
+    # Active Job の実行は Sidekiq が担当
+    config.active_job.queue_adapter = :sidekiq
   end
 end
