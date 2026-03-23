@@ -193,7 +193,7 @@ document.addEventListener("DOMContentLoaded", () => {
         status.innerText = "正常にアップロードされました！";
         status.style.color = "green";
         // アップロード完了後にリロード実行（フォルダを自動的に表示するため）
-        // setTimeout(() => { window.location.reload(); }, 1000);
+        setTimeout(() => { window.location.reload(); }, 1000);
 
       } else {
         status.innerText = `${results.successCount}/${images.length} 件 アップロード済み（失敗あり）`;
