@@ -1,10 +1,12 @@
 # 同時に実行するジョブの数（スレッド数）
-:concurrency: 10
+:concurrency: 5
 
 # キュー（実行したいJobの種類）は以下に追記
 :queues:
-  - default
+  - [analyze_illustrations, 7]
+  - generate_thumbnails
   # ActiveStorage が裏側で実行するJob
   - active_storage_analysis # 画像アップロード時に実行されるJob
   - active_storage_purge    # 画像削除時に実行されるJob
+  - default
   

@@ -1,14 +1,10 @@
 require "open3"
 
 class AnalyzeIllustrationJob < ApplicationJob
-  queue_as :default
+  queue_as :analyze_illustrations
 
-  # リトライ対象の絞り込み
-  class ProcessingError < StandardError; end
-
-  retry_on ActiveRecord::Deadlocked, wait: :exponentially_longer, attempts: 5
-  retry_on ProcessingError, wait: 5.seconds, attempts: 5
-
+  Attempts = 5
+  retry_on ActiveRecord::Deadlocked, wait: :exponentially_longer, attempts: Attempts
 
   def perform(illustration_id)
     @illustration = Illustration.find_by(id: illustration_id)
@@ -18,36 +14,25 @@ class AnalyzeIllustrationJob < ApplicationJob
       @illustration.image.open do |file|
         # 「撮影日時」抽出
         extract_exif(file)
-        # 類似検索用指紋 生成
+        # 「類似判定用データ」生成
         generate_fingerprint(file)
       end
       
-      # 上記保存（shot_at, fingerprint）
-      @illustration.save!
-
+      @illustration.update_columns(shot_at: @illustration.shot_at, fingerprint: @illustration.fingerprint) if @illustration.changed?
       # サムネ生成・保存
-      generate_thumbnail
+      GenerateThumbnailJob.perform_later(illustration_id)
 
     # デッドロック時
     rescue ActiveRecord::Deadlocked => e
-      if executions >= 5
-        Rails.logger.error "画像解析 失敗（原因: デッドロック） > #{@illustration.id}: \n#{e.message}"
+      if executions >= Attempts
+        Rails.logger.error "解析データ登録失敗 > #{@illustration.id}: \n#{e.message}"
       else
-        Rails.logger.warn "[#{executions}/5] デッドロック発生 (ID: #{@illustration.id}): \n#{e.message}"
-      end
-      raise
-      
-    # 各処理失敗時
-    rescue ProcessingError => e
-      if executions >= 5
-        Rails.logger.error "画像解析 失敗（原因: 非同期処理） > #{@illustration.id}: \n#{e.message}"
-      else
-        Rails.logger.warn "[#{executions}/5] 処理一時失敗 (ID: #{@illustration.id}): \n#{e.message}"
+        Rails.logger.warn "[#{executions}/#{Attempts}] デッドロック発生 > #{@illustration.id}: \n#{e.message}"
       end
       raise
 
     rescue => e
-      Rails.logger.error "画像解析 失敗 > #{@illustration.id}: \n#{e.message}"
+      Rails.logger.error "解析データ登録失敗 > #{@illustration.id}: \n#{e.message}"
       raise
     end
   end
@@ -76,9 +61,8 @@ class AnalyzeIllustrationJob < ApplicationJob
       end
 
     else
-      # ※外部OSで実行したコマンドの失敗は rescue で拾えないため記述
       error_detail = stderr.presence || output.presence || "exit_status=#{status.exitstatus}"
-      raise ProcessingError, "「撮影日時」抽出失敗: #{error_detail}"
+      Rails.logger.error "「撮影日時」抽出失敗 > #{@illustration.id}: \n#{error_detail}"
     end
   end
 
@@ -106,17 +90,7 @@ class AnalyzeIllustrationJob < ApplicationJob
       @illustration.fingerprint = final_hash
       
     rescue => e
-      raise ProcessingError, "fingerprint生成失敗: #{e.message}"
+      Rails.logger.error "「類似判定用データ」生成失敗 > #{@illustration.id}: \n#{e.message}"
     end
-  end
-
-  # =========================================================
-  # サムネ生成・保存
-  # =========================================================
-  def generate_thumbnail
-    @illustration.image.variant(resize_to_limit: [300, 300]).processed
-
-    rescue => e
-      raise ProcessingError, "サムネ生成失敗: #{e.message}"
   end
 end
