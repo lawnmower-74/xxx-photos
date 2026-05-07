@@ -28,13 +28,13 @@ export const ImageUploader = {
 
         if (!response.ok) throw new Error('アップロード失敗'); // -> catchへ
 
+        completedCount++;
+
         // ※非同期Jobの完了チェック用にアップロードしたものはここで追加
         const data = await response.json();
         if (data.id) {
           uploadedIds.push(data.id);
         }
-
-        completedCount++;
 
       } catch (err) {
         console.error("アップロード失敗: ", err);
@@ -69,11 +69,13 @@ export const ImageUploader = {
     // ===========================================================================================
     // 全件アップロードが完了したら非同期Job（撮影日時抽出・類似判定用データ生成）が完了したかをチェック
     // ===========================================================================================
-    if (uploadedIds.length > 0 && errorCount === 0) {
-      let pollingTime = 0;
-      const MAX_POLLING_MS = 120000; // タイムアウトの制限時間（2分）
+    let jobsCompleted = false;
 
-      while (pollingTime < MAX_POLLING_MS) {
+    if (uploadedIds.length > 0) {
+      const MAX_POLLING_MS = 120000; // タイムアウトの制限時間（2分）
+      const pollingDeadline = Date.now() + MAX_POLLING_MS;
+
+      while (Date.now() < pollingDeadline) {
         try {
           const response = await fetch("/illustrations/check_jobs_status", {
             method: "POST",
@@ -94,6 +96,7 @@ export const ImageUploader = {
           }
 
           if (statusData.completed) {
+            jobsCompleted = true;
             break; // 全Job完了したらチェックループを終了
           }
 
@@ -103,7 +106,11 @@ export const ImageUploader = {
 
         // 2秒待機してから再チェック
         await new Promise(resolve => setTimeout(resolve, 2000));
-        pollingTime += 2000;
+      }
+
+      // タイムアウト時に呼び出し元へ通知
+      if (!jobsCompleted && onJobProgress) {
+        onJobProgress({ completed: null, total: null, timedOut: true });
       }
     }
 
@@ -111,7 +118,8 @@ export const ImageUploader = {
       successCount: completedCount, 
       errorCount, 
       failedImages, 
-      isAllSuccess: errorCount === 0 
+      isAllSuccess: errorCount === 0,
+      jobsCompleted,
     };
   }
 };
