@@ -28,14 +28,14 @@ export const ImageUploader = {
 
         if (!response.ok) throw new Error('アップロード失敗'); // -> catchへ
 
-        completedCount++;
-
         // ※非同期Jobの完了チェック用にアップロードしたものはここで追加
         const data = await response.json();
         if (data.id) {
           uploadedIds.push(data.id);
         }
 
+        completedCount++;
+        
       } catch (err) {
         console.error("アップロード失敗: ", err);
         errorCount++;

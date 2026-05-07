@@ -143,9 +143,8 @@ class IllustrationsController < ApplicationController
       return render json: { completed: true, completed_count: 0, total_count: 0 }, status: :ok
     end
 
-    scope = Illustration.where(id: ids)
-    total_count = scope.count
-    completed_count = scope.where.not(fingerprint: nil).count
+    total_count = ids.size
+    completed_count = Illustration.where(id: ids).where.not(fingerprint: nil).count
 
     is_completed = completed_count == total_count
 
