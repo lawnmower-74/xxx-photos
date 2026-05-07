@@ -18,7 +18,11 @@ class AnalyzeIllustrationJob < ApplicationJob
         generate_fingerprint(file)
       end
       
-      @illustration.update_columns(shot_at: @illustration.shot_at, fingerprint: @illustration.fingerprint) if @illustration.changed?
+      @illustration.update_columns(
+        shot_at: @illustration.shot_at, 
+        fingerprint: @illustration.fingerprint
+      )
+      
       # サムネ生成・保存
       GenerateThumbnailJob.perform_later(illustration_id)
 

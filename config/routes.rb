@@ -33,6 +33,8 @@ Rails.application.routes.draw do
     collection do
       # 画像の一括削除
       delete :bulk_destroy
+      # 非同期Job（撮影日時抽出・類似判定用データ生成）の完了チェック
+      post :check_jobs_status
     end
   end
 
