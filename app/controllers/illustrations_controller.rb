@@ -137,14 +137,15 @@ class IllustrationsController < ApplicationController
   # 非同期Job（撮影日時抽出・類似判定用データ生成）の完了チェック
   # ======================================================================
   def check_jobs_status
-    ids = params[:ids] || []
+    ids = params.permit(ids: [])[:ids] || []
 
     if ids.empty?
       return render json: { completed: true, completed_count: 0, total_count: 0 }, status: :ok
     end
 
-    total_count = ids.length
-    completed_count = Illustration.where(id: ids).where.not(fingerprint: nil).count
+    scope = Illustration.where(id: ids)
+    total_count = scope.count
+    completed_count = scope.where.not(fingerprint: nil).count
 
     is_completed = completed_count == total_count
 
