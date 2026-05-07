@@ -68,11 +68,4 @@ docker compose run --rm app bundle exec rspec
 config.use_transactional_fixtures = false
 ```
 
----
-
-## ドキュメント
-
-### ER図
-![ER図](docs/public/database-schema.svg)
-
 
