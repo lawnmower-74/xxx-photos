@@ -10,6 +10,12 @@ services:
     volumes:
       - db_data:/var/lib/mysql
 
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    volumes:
+      - redis_data:/data
+
   app:
     build: .
     container_name: app
@@ -20,8 +26,24 @@ services:
       - "3000:3000"
     depends_on:
       - db
+      - redis
     environment:
       DATABASE_PASSWORD: password
+      REDIS_URL: redis://redis:6379/1
+
+  sidekiq:
+    build: .
+    container_name: sidekiq
+    command: bundle exec sidekiq -C config/sidekiq.yml
+    volumes:
+      - .:/app
+    depends_on:
+      - db
+      - redis
+    environment:
+      DATABASE_PASSWORD: password
+      REDIS_URL: redis://redis:6379/1
 
 volumes:
   db_data:
+  redis_data:
