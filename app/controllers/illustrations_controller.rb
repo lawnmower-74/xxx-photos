@@ -65,7 +65,7 @@ class IllustrationsController < ApplicationController
       if @illustration.save
         AnalyzeIllustrationJob.perform_later(@illustration.id)
     
-        render json: { message: "アップロード完了" }, status: :created
+        render json: { message: "アップロード完了", id: @illustration.id }, status: :created
       else
         render json: { error: @illustration.errors.full_messages.join(", ") }, status: :unprocessable_entity
       end
@@ -131,6 +131,28 @@ class IllustrationsController < ApplicationController
     @illustrator = Illustrator.find_by!(name: params[:id])
     @illustrator.destroy
     render json: { message: "削除しました" }, status: :ok
+  end
+
+  # ======================================================================
+  # 非同期Job（撮影日時抽出・類似判定用データ生成）の完了チェック
+  # ======================================================================
+  def check_jobs_status
+    ids = params.permit(ids: [])[:ids] || []
+
+    if ids.empty?
+      return render json: { completed: true, completed_count: 0, total_count: 0 }, status: :ok
+    end
+
+    total_count = ids.size
+    completed_count = Illustration.where(id: ids).where.not(fingerprint: nil).count
+
+    is_completed = completed_count == total_count
+
+    render json: {
+      completed: is_completed,
+      completed_count: completed_count,
+      total_count: total_count
+    }, status: :ok
   end
 
   

@@ -45,6 +45,11 @@ docker compose up
 docker exec -it app rails c
 ```
 
+```bash
+# Sidekiq管理画面のリセット
+docker exec -it redis redis-cli flushall
+```
+
 ## テスト用
 
 ### RSpec
@@ -62,12 +67,5 @@ docker compose run --rm app bundle exec rspec
 # spec\rails_helper.rb
 config.use_transactional_fixtures = false
 ```
-
----
-
-## ドキュメント
-
-### ER図
-![ER図](docs/public/database-schema.svg)
 
 
