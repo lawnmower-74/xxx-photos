@@ -105,7 +105,6 @@ class IllustrationsController < ApplicationController
 
       # 削除後（更新後）の全画像を取得
       @illustrator = Illustrator.find_by!(name: params[:illustrator_name])
-      latest_illustrations = @illustrator.illustrations.includes(image_attachment: :blob)
       
       # 上記から類似画像を再計算
       @similar_illustrations = calculate_similar_illustrations(@illustrator.id)
