@@ -37,11 +37,15 @@ class SimilarityApiService
     request = Net::HTTP::Post.new(uri.request_uri)
     response = http.request(request)
 
-    unless response.is_a?(Net::HTTPSuccess)
+    if response.is_a?(Net::HTTPSuccess)
+      true
+    else
       Rails.logger.error "Go API エラー (rebuild): #{response.code} #{response.message}"
+      false
     end
   rescue => e
     Rails.logger.error "Go API への接続に失敗しました (rebuild): #{e.message}"
+    false
   end
 
   # ==========================================================

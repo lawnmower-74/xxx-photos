@@ -102,26 +102,46 @@ class IllustrationsController < ApplicationController
     ids = params[:ids]
     # 削除実行
     if ids.present? && Illustration.where(id: ids).destroy_all
+      begin
+        # 削除後（更新後）の全画像を取得
+        @illustrator = Illustrator.find_by!(name: params[:illustrator_name])
 
-      # 削除後（更新後）の全画像を取得
-      @illustrator = Illustrator.find_by!(name: params[:illustrator_name])
+        # 削除後の状態をBK-Treeに反映してから類似画像を再計算
+        rebuild_success = SimilarityApiService.rebuild
+        if rebuild_success
+          @similar_illustrations = calculate_similar_illustrations(@illustrator.id)
+        else
+          Rails.logger.error "BK-Tree再構築に失敗したため、類似画像の再計算をスキップしました (illustrator_id=#{@illustrator.id})"
+          @similar_illustrations = []
+        end
 
-      # 削除後の状態をBK-Treeに反映してから類似画像を再計算
-      SimilarityApiService.rebuild
-      @similar_illustrations = calculate_similar_illustrations(@illustrator.id)
-  
-      html = render_to_string(
-        partial: 'illustrations/similar_section',
-        formats: [:html],
-        locals: { 
-          similar_illustrations: @similar_illustrations
-        }
-      )
+        html = render_to_string(
+          partial: 'illustrations/similar_section',
+          formats: [:html],
+          locals: { 
+            similar_illustrations: @similar_illustrations
+          }
+        )
 
-      render json: { 
-        message: "一括削除に成功しました", 
-        html: html 
-      }, status: :ok
+        render json: { 
+          message: "一括削除に成功しました", 
+          html: html 
+        }, status: :ok
+      rescue => e
+        Rails.logger.error "類似画像再計算フローで例外が発生しました: #{e.class} #{e.message}"
+        @similar_illustrations = []
+        html = render_to_string(
+          partial: 'illustrations/similar_section',
+          formats: [:html],
+          locals: {
+            similar_illustrations: @similar_illustrations
+          }
+        )
+        render json: {
+          message: "一括削除に成功しました",
+          html: html
+        }, status: :ok
+      end
     else
       render json: { error: "削除する項目が選択されていないか、失敗しました" }, status: :unprocessable_entity
     end
