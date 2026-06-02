@@ -139,7 +139,14 @@ func main() {
 	}
 
 	log.Printf("Go APIサーバーをポート %s で起動しています...", port)
-	if err := http.ListenAndServe(":"+port, nil); err != nil {
+	server := &http.Server{
+		Addr:         ":" + port,
+		Handler:      nil,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  2 * time.Minute,
+	}
+	if err := server.ListenAndServe(); err != nil {
 		log.Fatalf("サーバーの起動に失敗しました: %v", err)
 	}
 }
@@ -157,28 +164,29 @@ func initDB() {
 		os.Getenv("DB_NAME"),
 	)
 
+	db, err = sql.Open("mysql", dsn)
+	if err != nil {
+		log.Fatalf("MySQL接続初期化に失敗しました: %v", err)
+	}
+
 	// docker-compose起動時のDB起動待ちのためのリトライ処理
 	for i := 0; i < 15; i++ {
-		db, err = sql.Open("mysql", dsn)
+		err = db.Ping()
 		if err == nil {
-			err = db.Ping()
-			if err == nil {
-				log.Println("MySQLへの接続に成功しました")
-				return
-			}
+			log.Println("MySQLへの接続に成功しました")
+			return
 		}
 		log.Printf("DBの起動を待機しています... %v", err)
 		time.Sleep(2 * time.Second)
 	}
+	_ = db.Close()
 	log.Fatalf("MySQLへの接続に失敗しました: %v", err)
 }
 
 // ==========================================
 // 全イラストレーターのBK-Treeをメモリ上に構築
 // ==========================================
-func Verify each finding against current code. Fix only still-valid issues, skip the rest with a brief reason, keep changes minimal, and validate.
-
-In @go_api/main.go around lines 259 - 271, The handleRebuild handler currently allows unauthenticated, synchronous full rebuilds via buildAllTrees(); add a shared-secret check (e.g., read secret from env and validate an Authorization header or X-Rebuild-Token) and return 401 on mismatch, and add an in-flight guard (a package-level atomic flag or mutex) around buildAllTrees() to detect/serialize concurrent requests so if a rebuild is already running you either return 409 or queue/skip the new request; update handleRebuild to validate the token, check/set the in-flight flag, call buildAllTrees(), then clear the flag before responding.() {
+func buildAllTrees() {
 	rows, err := db.Query("SELECT id, illustrator_id, fingerprint FROM illustrations WHERE fingerprint IS NOT NULL")
 	if err != nil {
 		log.Printf("BK-Tree構築クエリエラー: %v", err)
@@ -192,7 +200,8 @@ In @go_api/main.go around lines 259 - 271, The handleRebuild handler currently a
 		var id, illustratorID int64
 		var fp int64 // DBでは符号付き(BIGINT)として保存されている可能性があるためint64で読み込む
 		if err := rows.Scan(&id, &illustratorID, &fp); err != nil {
-			continue
+			log.Printf("BK-Tree構築スキャンエラー: %v (id=%d, illustrator_id=%d)", err, id, illustratorID)
+			return
 		}
 		if _, exists := newMap[illustratorID]; !exists {
 			newMap[illustratorID] = &IllustratorData{
@@ -203,6 +212,10 @@ In @go_api/main.go around lines 259 - 271, The handleRebuild handler currently a
 		newMap[illustratorID].Tree.Insert(id, ufp)
 		newMap[illustratorID].Illustrations = append(newMap[illustratorID].Illustrations, Illustration{ID: id, Fingerprint: ufp})
 		count++
+	}
+	if err := rows.Err(); err != nil {
+		log.Printf("BK-Tree構築の行走査エラー: %v", err)
+		return
 	}
 
 	// 書き込みロックを取得してマップを丸ごと入れ替える
