@@ -1,6 +1,7 @@
 require 'net/http'
 require 'uri'
 require 'json'
+require 'timeout'
 
 # ==========================================
 # Go APIとの通信を担当するサービスクラス
@@ -12,8 +13,18 @@ class SimilarityApiService
   # 類似画像のIDリストを取得
   # ==========================================
   def self.find_similar_ids(illustrator_id, threshold: 5)
-    uri = URI.parse("#{BASE_URL}/similarities?illustrator_id=#{illustrator_id}&threshold=#{threshold}")
-    response = Net::HTTP.get_response(uri)
+    uri = URI.parse("#{BASE_URL}/similarities")
+    uri.query = URI.encode_www_form(
+      illustrator_id: illustrator_id,
+      threshold: threshold
+    )
+
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.open_timeout = 3
+    http.read_timeout = 3
+
+    request = Net::HTTP::Get.new(uri.request_uri)
+    response = http.request(request)
 
     if response.is_a?(Net::HTTPSuccess)
       data = JSON.parse(response.body)
@@ -22,6 +33,9 @@ class SimilarityApiService
       Rails.logger.error "Go API エラー (similarities): #{response.code} #{response.message}"
       []
     end
+  rescue Net::OpenTimeout, Net::ReadTimeout, Timeout::Error => e
+    Rails.logger.error "Go API タイムアウト (similarities): #{e.message}"
+    []
   rescue => e
     Rails.logger.error "Go API への接続に失敗しました (similarities): #{e.message}"
     []
@@ -34,6 +48,8 @@ class SimilarityApiService
   def self.rebuild
     uri = URI.parse("#{BASE_URL}/rebuild")
     http = Net::HTTP.new(uri.host, uri.port)
+    http.open_timeout = 3
+    http.read_timeout = 3
     request = Net::HTTP::Post.new(uri.request_uri)
     response = http.request(request)
 
