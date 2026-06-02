@@ -105,8 +105,9 @@ class IllustrationsController < ApplicationController
 
       # 削除後（更新後）の全画像を取得
       @illustrator = Illustrator.find_by!(name: params[:illustrator_name])
-      
-      # 上記から類似画像を再計算
+
+      # 削除後の状態をBK-Treeに反映してから類似画像を再計算
+      SimilarityApiService.rebuild
       @similar_illustrations = calculate_similar_illustrations(@illustrator.id)
   
       html = render_to_string(
@@ -169,25 +170,8 @@ class IllustrationsController < ApplicationController
   # 類似画像（重複候補）の抽出
   # ==========================================
   def calculate_similar_illustrations(illustrator_id)
-    # -----------------------------------------
-    # 類似のしきい値（この値以下を類似と判定）
-    # -----------------------------------------
-    threshold = 5
-
-    # データベース上で同一イラストレーター内の画像同士を比較し、ハミング距離が閾値以下の画像IDを取得する
-    sql = <<~SQL
-      SELECT DISTINCT i1.id
-      FROM illustrations i1
-      INNER JOIN illustrations i2 
-        ON i1.illustrator_id = i2.illustrator_id
-        AND i1.id != i2.id
-      WHERE i1.illustrator_id = :illustrator_id
-        AND i1.fingerprint IS NOT NULL
-        AND i2.fingerprint IS NOT NULL
-        AND BIT_COUNT(CAST(i1.fingerprint AS UNSIGNED) ^ CAST(i2.fingerprint AS UNSIGNED)) <= :threshold
-    SQL
-
-    similar_ids = Illustration.find_by_sql([sql, { illustrator_id: illustrator_id, threshold: threshold }]).map(&:id)
+    # Go API（BK-Tree）で類似画像のIDリストを取得
+    similar_ids = SimilarityApiService.find_similar_ids(illustrator_id)
 
     direction = params[:sort] == 'asc' ? :asc : :desc
 

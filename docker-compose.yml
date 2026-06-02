@@ -44,6 +44,20 @@ services:
       DATABASE_PASSWORD: password
       REDIS_URL: redis://redis:6379/1
 
+  similarity_api:
+    build: ./go_api
+    container_name: similarity_api
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    environment:
+      DB_USER: root
+      DB_PASSWORD: password
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: xxx_photos
+
 volumes:
   db_data:
   redis_data:

@@ -1,0 +1,12 @@
+FROM golang:1.24-alpine AS builder
+
+WORKDIR /app
+COPY . .
+RUN go mod tidy
+RUN go build -o similarity_api main.go
+
+FROM alpine:latest
+WORKDIR /root/
+COPY --from=builder /app/similarity_api .
+EXPOSE 8080
+CMD ["./similarity_api"]
