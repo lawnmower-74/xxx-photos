@@ -22,9 +22,8 @@ class AnalyzeIllustrationJob < ApplicationJob
         shot_at: @illustration.shot_at, 
         fingerprint: @illustration.fingerprint
       )
-
-      # BK-Treeを再構築（新しい画像のフィンガープリントを類似判定に反映）
-      SimilarityApiService.rebuild
+      # BK-Treeに新しい画像の「類似判定用データ」を追加（再ビルドするのではなく）
+      SimilarityApiService.insert_fingerprint(@illustration)
       
       # サムネ生成・保存
       GenerateThumbnailJob.perform_later(illustration_id)

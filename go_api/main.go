@@ -109,6 +109,12 @@ type SimilaritiesResponse struct {
 	SimilarIDs []int64 `json:"similar_ids"`
 }
 
+type InsertFingerprintRequest struct {
+	ID            int64 `json:"id"`
+	IllustratorID int64 `json:"illustrator_id"`
+	Fingerprint   int64 `json:"fingerprint"`
+}
+
 var db *sql.DB
 
 // イラストレーターIDをキーにしたインメモリデータ
@@ -125,6 +131,7 @@ func main() {
 
 	http.HandleFunc("/similarities", handleSimilarities)
 	http.HandleFunc("/rebuild", handleRebuild)
+	http.HandleFunc("/insert_fingerprint", handleInsertFingerprint)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -169,7 +176,9 @@ func initDB() {
 // ==========================================
 // 全イラストレーターのBK-Treeをメモリ上に構築
 // ==========================================
-func buildAllTrees() {
+func Verify each finding against current code. Fix only still-valid issues, skip the rest with a brief reason, keep changes minimal, and validate.
+
+In @go_api/main.go around lines 259 - 271, The handleRebuild handler currently allows unauthenticated, synchronous full rebuilds via buildAllTrees(); add a shared-secret check (e.g., read secret from env and validate an Authorization header or X-Rebuild-Token) and return 401 on mismatch, and add an in-flight guard (a package-level atomic flag or mutex) around buildAllTrees() to detect/serialize concurrent requests so if a rebuild is already running you either return 409 or queue/skip the new request; update handleRebuild to validate the token, check/set the in-flight flag, call buildAllTrees(), then clear the flag before responding.() {
 	rows, err := db.Query("SELECT id, illustrator_id, fingerprint FROM illustrations WHERE fingerprint IS NOT NULL")
 	if err != nil {
 		log.Printf("BK-Tree構築クエリエラー: %v", err)
@@ -250,6 +259,50 @@ func handleSimilarities(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(SimilaritiesResponse{SimilarIDs: result})
+}
+
+// ==========================================================
+// 単一画像の「類似判定用データ」をBK-Treeに追加
+// ==========================================================
+func handleInsertFingerprint(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POSTメソッドのみ受け付けます", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req InsertFingerprintRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "リクエストボディのパースに失敗しました", http.StatusBadRequest)
+		return
+	}
+
+	if req.ID == 0 || req.IllustratorID == 0 {
+		http.Error(w, "id または illustrator_id が不正です", http.StatusBadRequest)
+		return
+	}
+
+	ufp := uint64(req.Fingerprint)
+
+	dataMu.Lock()
+	defer dataMu.Unlock()
+
+	if illustratorDataMap == nil {
+		illustratorDataMap = make(map[int64]*IllustratorData)
+	}
+
+	data, exists := illustratorDataMap[req.IllustratorID]
+	if !exists {
+		data = &IllustratorData{
+			Tree: &BKTree{},
+		}
+		illustratorDataMap[req.IllustratorID] = data
+	}
+
+	data.Tree.Insert(req.ID, ufp)
+	data.Illustrations = append(data.Illustrations, Illustration{ID: req.ID, Fingerprint: ufp})
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "inserted"})
 }
 
 // ==========================================

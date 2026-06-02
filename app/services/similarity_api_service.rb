@@ -43,4 +43,28 @@ class SimilarityApiService
   rescue => e
     Rails.logger.error "Go API への接続に失敗しました (rebuild): #{e.message}"
   end
+
+  # ==========================================================
+  # 単一画像の「類似判定用データ」をBK-Treeに追加
+  # ==========================================================
+  def self.insert_fingerprint(illustration)
+    return if illustration.nil? || illustration.fingerprint.blank? || illustration.illustrator_id.blank?
+
+    uri = URI.parse("#{BASE_URL}/insert_fingerprint")
+    http = Net::HTTP.new(uri.host, uri.port)
+    request = Net::HTTP::Post.new(uri.request_uri, { "Content-Type" => "application/json" })
+    request.body = {
+      id: illustration.id,
+      illustrator_id: illustration.illustrator_id,
+      fingerprint: illustration.fingerprint
+    }.to_json
+
+    response = http.request(request)
+
+    unless response.is_a?(Net::HTTPSuccess)
+      Rails.logger.error "Go API エラー (insert_fingerprint): #{response.code} #{response.message}"
+    end
+  rescue => e
+    Rails.logger.error "Go API への接続に失敗しました (insert_fingerprint): #{e.message}"
+  end
 end
