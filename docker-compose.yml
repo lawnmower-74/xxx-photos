@@ -47,8 +47,8 @@ services:
   similarity_api:
     build: ./go_api
     container_name: similarity_api
-    ports:
-      - "8080:8080"
+    expose:
+      - "8080"
     depends_on:
       - db
     environment:
