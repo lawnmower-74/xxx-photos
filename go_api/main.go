@@ -18,7 +18,6 @@ import (
 // ==========================================
 // BK-Tree のデータ構造
 // ==========================================
-
 type BKNode struct {
 	ID          int64
 	Fingerprint uint64
@@ -33,25 +32,34 @@ type BKTree struct {
 // ハミング距離（XORした結果の1のビット数）を計算
 // =============================================
 func hammingDistance(a, b uint64) int {
+	// 二つの値を重ねると数値の違うところだけが 1 として浮かび上がる。その数をカウント（= ハミング距離）
 	return bits.OnesCount64(a ^ b)
 }
 
 // ==========================================
-// BK-Treeにノードを挿入（O(log N)）
+// BK-Treeにノードを挿入
+// t: 指定イラストレーターのBK-Tree
+// fp: 更新された画像
 // ==========================================
 func (t *BKTree) Insert(id int64, fp uint64) {
+	// 新しいイラスト用のノードを作成
 	node := &BKNode{
 		ID:          id,
 		Fingerprint: fp,
 		Children:    make(map[int]*BKNode),
 	}
+
+	// 対象イラストレーターのBK-Treeがもしまだなければこれをルートとする（初回アップロード時など）
 	if t.Root == nil {
 		t.Root = node
 		return
 	}
+
 	current := t.Root
 	for {
 		dist := hammingDistance(current.Fingerprint, fp)
+
+		// その距離の枝にすでに画像がある場合、その画像と次のループで比較する（※1枝1ノードのため）
 		if child, exists := current.Children[dist]; exists {
 			current = child
 		} else {
@@ -60,27 +68,33 @@ func (t *BKTree) Insert(id int64, fp uint64) {
 		}
 	}
 }
+
 // ==================================================================
-// BK-Treeから類似ノードを検索（O(log N)）
-// しきい値以下のハミング距離を持つノードのみをたどる「枝刈り」を行う
+// 類似判定
+// t: 指定イラストレーターのBK-Tree
+// fp: 調べたい画像
 // ==================================================================
 func (t *BKTree) Search(fp uint64, threshold int) []int64 {
 	if t.Root == nil {
 		return nil
 	}
-	var results []int64
-	// スタックを使った深さ優先探索
-	stack := []*BKNode{t.Root}
-	for len(stack) > 0 {
-		current := stack[len(stack)-1]
-		stack = stack[:len(stack)-1]
 
+	var results []int64
+	stack := []*BKNode{t.Root}  // チェックリスト（スタート地点としてルートを代入）
+
+	for len(stack) > 0 {
+		current := stack[len(stack)-1]  // 1. 調べたい画像（fp）と比較する画像を取得
+		stack = stack[:len(stack)-1]    // 2. 1 をチェックリストから外す
+
+		// 類似判定（1 と fp 間の距離を測定）
 		dist := hammingDistance(current.Fingerprint, fp)
 		if dist <= threshold {
 			results = append(results, current.ID)
 		}
-		// 枝刈り: dist ± threshold の範囲にある子ノードだけを探索対象に追加
-		// この範囲外の枝は「類似画像が絶対に存在しない」ことが数学的に保証される
+
+		// -----------------------------------------------------------------------------------------------
+		// dist ± threshold の範囲にある子ノードだけをチェックリストに追加（※ここで検索対象を大幅に限定できる）
+		// -----------------------------------------------------------------------------------------------
 		for childDist, child := range current.Children {
 			if childDist >= dist-threshold && childDist <= dist+threshold {
 				stack = append(stack, child)
@@ -93,7 +107,6 @@ func (t *BKTree) Search(fp uint64, threshold int) []int64 {
 // ==========================================
 // イラストレーターごとのインメモリデータ
 // ==========================================
-
 type Illustration struct {
 	ID          int64
 	Fingerprint uint64
@@ -118,26 +131,30 @@ type InsertFingerprintRequest struct {
 var db *sql.DB
 
 // イラストレーターIDをキーにしたインメモリデータ
-// 起動時にDBから全件読み込み、以降は /rebuild で更新
 var illustratorDataMap map[int64]*IllustratorData
+
+// BK-Tree（とそれを管理するマップ）へのアクセス権限（鍵）
 var dataMu sync.RWMutex
 
+
 func main() {
+	// MySQLへの接続を確立
 	initDB()
 	defer db.Close()
 
 	// 起動時に一度だけDBから全データを読み込んでBK-Treeを構築
 	buildAllTrees()
 
+	// ルーティング
 	http.HandleFunc("/similarities", handleSimilarities)
 	http.HandleFunc("/rebuild", handleRebuild)
 	http.HandleFunc("/insert_fingerprint", handleInsertFingerprint)
 
+	// サーバー起動
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
-
 	log.Printf("Go APIサーバーをポート %s で起動しています...", port)
 	server := &http.Server{
 		Addr:         ":" + port,
@@ -152,7 +169,7 @@ func main() {
 }
 
 // ==========================================
-// MySQLへの接続を初期化
+// MySQLへの接続を確立
 // ==========================================
 func initDB() {
 	var err error
@@ -196,29 +213,38 @@ func buildAllTrees() {
 
 	newMap := make(map[int64]*IllustratorData)
 	count := 0
+
 	for rows.Next() {
+		// 列ごとにデータを取得
 		var id, illustratorID int64
-		var fp int64 // DBでは符号付き(BIGINT)として保存されている可能性があるためint64で読み込む
+		var fp int64
 		if err := rows.Scan(&id, &illustratorID, &fp); err != nil {
 			log.Printf("BK-Tree構築スキャンエラー: %v (id=%d, illustrator_id=%d)", err, id, illustratorID)
 			return
 		}
+
+		// イラストレーターごとにBK-Treeのひな型を作成
 		if _, exists := newMap[illustratorID]; !exists {
 			newMap[illustratorID] = &IllustratorData{
 				Tree: &BKTree{},
 			}
 		}
+
+		// BK-Treeに実データを挿入
 		ufp := uint64(fp)
 		newMap[illustratorID].Tree.Insert(id, ufp)
 		newMap[illustratorID].Illustrations = append(newMap[illustratorID].Illustrations, Illustration{ID: id, Fingerprint: ufp})
+
 		count++
 	}
+
+	// ループが正常に終了したかを確認
 	if err := rows.Err(); err != nil {
 		log.Printf("BK-Tree構築の行走査エラー: %v", err)
 		return
 	}
 
-	// 書き込みロックを取得してマップを丸ごと入れ替える
+	// BK-Treeを更新（更新中は他からのBK-Treeへのアクセスをロック）
 	dataMu.Lock()
 	illustratorDataMap = newMap
 	dataMu.Unlock()
@@ -227,7 +253,7 @@ func buildAllTrees() {
 }
 
 // ==========================================
-// 類似画像の検索（/similarities）
+// BK-Treeをもとに類似画像の検索
 // ==========================================
 func handleSimilarities(w http.ResponseWriter, r *http.Request) {
 	illustratorIDStr := r.URL.Query().Get("illustrator_id")
@@ -244,7 +270,7 @@ func handleSimilarities(w http.ResponseWriter, r *http.Request) {
 		threshold = 5 // デフォルトのしきい値
 	}
 
-	// 読み込みロックでマップを参照（複数リクエストの同時読み込みは許可）
+	// 指定されたイラストレーターのBK-Treeを参照
 	dataMu.RLock()
 	data, exists := illustratorDataMap[illustratorID]
 	dataMu.RUnlock()
@@ -253,30 +279,31 @@ func handleSimilarities(w http.ResponseWriter, r *http.Request) {
 	if exists && data.Tree.Root != nil {
 		similarIDsMap := make(map[int64]bool)
 
-		// 各画像に対してBK-Treeで検索（O(N log N)）
-		// 総当たりO(N²)とは異なり、枝刈りにより不要な比較をスキップする
 		for _, img := range data.Illustrations {
+			// 類似判定：対象の画像（img）とBK-Treeを比較
 			similar := data.Tree.Search(img.Fingerprint, threshold)
-			// 自分自身のみにマッチ（len == 1）の場合は類似画像なしとして除外
+
 			if len(similar) > 1 {
 				for _, sid := range similar {
-					similarIDsMap[sid] = true
+					similarIDsMap[sid] = true  // マップに追加（重複分は上書きされる）
 				}
 			}
 		}
 
+		// Rubyで処理できる配列に変換
 		for id := range similarIDsMap {
 			result = append(result, id)
 		}
 	}
 
+	// Rubyにレスポンス
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(SimilaritiesResponse{SimilarIDs: result})
 }
 
-// ==========================================================
-// 単一画像の「類似判定用データ」をBK-Treeに追加
-// ==========================================================
+// ====================================================================
+// 単一画像の「類似判定用データ」をBK-Treeに追加（全件ロード回避のため）
+// ====================================================================
 func handleInsertFingerprint(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "POSTメソッドのみ受け付けます", http.StatusMethodNotAllowed)
@@ -285,7 +312,7 @@ func handleInsertFingerprint(w http.ResponseWriter, r *http.Request) {
 
 	var req InsertFingerprintRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "リクエストボディのパースに失敗しました", http.StatusBadRequest)
+		http.Error(w, "リクエスト内容の解析に失敗しました", http.StatusBadRequest)
 		return
 	}
 
@@ -296,13 +323,14 @@ func handleInsertFingerprint(w http.ResponseWriter, r *http.Request) {
 
 	ufp := uint64(req.Fingerprint)
 
+	// BK-Treeを更新するため他からのアクセスをロック
 	dataMu.Lock()
 	defer dataMu.Unlock()
 
+	// 対象イラストレーターのBK-Treeがもしまだなければひな形を構築（初回アップロード時など）
 	if illustratorDataMap == nil {
 		illustratorDataMap = make(map[int64]*IllustratorData)
 	}
-
 	data, exists := illustratorDataMap[req.IllustratorID]
 	if !exists {
 		data = &IllustratorData{
@@ -311,6 +339,7 @@ func handleInsertFingerprint(w http.ResponseWriter, r *http.Request) {
 		illustratorDataMap[req.IllustratorID] = data
 	}
 
+	// BK-Treeに実データを追加
 	data.Tree.Insert(req.ID, ufp)
 	data.Illustrations = append(data.Illustrations, Illustration{ID: req.ID, Fingerprint: ufp})
 
@@ -319,8 +348,7 @@ func handleInsertFingerprint(w http.ResponseWriter, r *http.Request) {
 }
 
 // ==========================================
-// BK-Treeの再構築（/rebuild）
-// 画像の追加・削除後にRailsから呼び出す
+// BK-Treeの再構築
 // ==========================================
 func handleRebuild(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -329,7 +357,7 @@ func handleRebuild(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Println("BK-Treeの再構築リクエストを受信しました")
-	// 同期的に実行してから返す（Railsが再構築完了後の検索結果を受け取れるように）
+
 	buildAllTrees()
 
 	w.Header().Set("Content-Type", "application/json")

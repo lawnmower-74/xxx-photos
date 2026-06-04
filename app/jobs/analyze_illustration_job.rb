@@ -22,6 +22,7 @@ class AnalyzeIllustrationJob < ApplicationJob
         shot_at: @illustration.shot_at, 
         fingerprint: @illustration.fingerprint
       )
+      
       # BK-Treeに新しい画像の「類似判定用データ」を追加（再ビルドするのではなく）
       SimilarityApiService.insert_fingerprint(@illustration)
       

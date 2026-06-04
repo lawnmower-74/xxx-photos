@@ -102,6 +102,7 @@ class IllustrationsController < ApplicationController
     ids = params[:ids]
     # 削除実行
     if ids.present? && Illustration.where(id: ids).destroy_all
+
       begin
         # 削除後（更新後）の全画像を取得
         @illustrator = Illustrator.find_by!(name: params[:illustrator_name])
@@ -127,8 +128,10 @@ class IllustrationsController < ApplicationController
           message: "一括削除に成功しました", 
           html: html 
         }, status: :ok
+
       rescue => e
         Rails.logger.error "類似画像再計算フローで例外が発生しました: #{e.class} #{e.message}"
+
         @similar_illustrations = []
         html = render_to_string(
           partial: 'illustrations/similar_section',
@@ -137,11 +140,13 @@ class IllustrationsController < ApplicationController
             similar_illustrations: @similar_illustrations
           }
         )
+
         render json: {
           message: "一括削除に成功しました",
           html: html
         }, status: :ok
       end
+
     else
       render json: { error: "削除する項目が選択されていないか、失敗しました" }, status: :unprocessable_entity
     end
@@ -190,7 +195,7 @@ class IllustrationsController < ApplicationController
   # 類似画像（重複候補）の抽出
   # ==========================================
   def calculate_similar_illustrations(illustrator_id)
-    # Go API（BK-Tree）で類似画像のIDリストを取得
+    # Go API（BK-Tree）で類似判定を行い、重複候補の画像IDリストを取得
     similar_ids = SimilarityApiService.find_similar_ids(illustrator_id)
 
     direction = params[:sort] == 'asc' ? :asc : :desc
