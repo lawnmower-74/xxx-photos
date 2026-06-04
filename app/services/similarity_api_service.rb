@@ -81,7 +81,10 @@ class SimilarityApiService
 
     uri = URI.parse("#{BASE_URL}/insert_fingerprint")
 
+    # タイムアウト設定（デフォルトだと長いので3秒に設定）
     http = Net::HTTP.new(uri.host, uri.port)
+    http.open_timeout = 3
+    http.read_timeout = 3
 
     request = Net::HTTP::Post.new(uri.request_uri, { "Content-Type" => "application/json" })
     request.body = {
