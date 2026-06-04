@@ -103,24 +103,50 @@ class IllustrationsController < ApplicationController
     # 削除実行
     if ids.present? && Illustration.where(id: ids).destroy_all
 
-      # 削除後（更新後）の全画像を取得
-      @illustrator = Illustrator.find_by!(name: params[:illustrator_name])
-      
-      # 上記から類似画像を再計算
-      @similar_illustrations = calculate_similar_illustrations(@illustrator.id)
-  
-      html = render_to_string(
-        partial: 'illustrations/similar_section',
-        formats: [:html],
-        locals: { 
-          similar_illustrations: @similar_illustrations
-        }
-      )
+      begin
+        # 削除後（更新後）の全画像を取得
+        @illustrator = Illustrator.find_by!(name: params[:illustrator_name])
 
-      render json: { 
-        message: "一括削除に成功しました", 
-        html: html 
-      }, status: :ok
+        # 削除後の状態をBK-Treeに反映してから類似画像を再計算
+        rebuild_success = SimilarityApiService.rebuild
+        if rebuild_success
+          @similar_illustrations = calculate_similar_illustrations(@illustrator.id)
+        else
+          Rails.logger.error "BK-Tree再構築に失敗したため、類似画像の再計算をスキップしました (illustrator_id=#{@illustrator.id})"
+          @similar_illustrations = []
+        end
+
+        html = render_to_string(
+          partial: 'illustrations/similar_section',
+          formats: [:html],
+          locals: { 
+            similar_illustrations: @similar_illustrations
+          }
+        )
+
+        render json: { 
+          message: "一括削除に成功しました", 
+          html: html 
+        }, status: :ok
+
+      rescue => e
+        Rails.logger.error "類似画像再計算フローで例外が発生しました: #{e.class} #{e.message}"
+
+        @similar_illustrations = []
+        html = render_to_string(
+          partial: 'illustrations/similar_section',
+          formats: [:html],
+          locals: {
+            similar_illustrations: @similar_illustrations
+          }
+        )
+
+        render json: {
+          message: "一括削除に成功しました",
+          html: html
+        }, status: :ok
+      end
+
     else
       render json: { error: "削除する項目が選択されていないか、失敗しました" }, status: :unprocessable_entity
     end
@@ -169,25 +195,8 @@ class IllustrationsController < ApplicationController
   # 類似画像（重複候補）の抽出
   # ==========================================
   def calculate_similar_illustrations(illustrator_id)
-    # -----------------------------------------
-    # 類似のしきい値（この値以下を類似と判定）
-    # -----------------------------------------
-    threshold = 5
-
-    # データベース上で同一イラストレーター内の画像同士を比較し、ハミング距離が閾値以下の画像IDを取得する
-    sql = <<~SQL
-      SELECT DISTINCT i1.id
-      FROM illustrations i1
-      INNER JOIN illustrations i2 
-        ON i1.illustrator_id = i2.illustrator_id
-        AND i1.id != i2.id
-      WHERE i1.illustrator_id = :illustrator_id
-        AND i1.fingerprint IS NOT NULL
-        AND i2.fingerprint IS NOT NULL
-        AND BIT_COUNT(CAST(i1.fingerprint AS UNSIGNED) ^ CAST(i2.fingerprint AS UNSIGNED)) <= :threshold
-    SQL
-
-    similar_ids = Illustration.find_by_sql([sql, { illustrator_id: illustrator_id, threshold: threshold }]).map(&:id)
+    # Go API（BK-Tree）で類似判定を行い、重複候補の画像IDリストを取得
+    similar_ids = SimilarityApiService.find_similar_ids(illustrator_id)
 
     direction = params[:sort] == 'asc' ? :asc : :desc
 
