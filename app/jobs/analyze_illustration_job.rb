@@ -1,10 +1,14 @@
 require "open3"
 
 class AnalyzeIllustrationJob < ApplicationJob
+  class BkTreeSyncError < StandardError; end
+
   queue_as :analyze_illustrations
 
+  # リトライ設定
   Attempts = 5
   retry_on ActiveRecord::Deadlocked, wait: :exponentially_longer, attempts: Attempts
+  retry_on BkTreeSyncError, wait: :exponentially_longer, attempts: Attempts
 
   def perform(illustration_id)
     @illustration = Illustration.find_by(id: illustration_id)
@@ -17,24 +21,31 @@ class AnalyzeIllustrationJob < ApplicationJob
         # 「類似判定用データ」生成
         generate_fingerprint(file)
       end
+
+      if @illustration.fingerprint.blank?
+        raise "「類似判定用データ」が生成できませんでした > #{@illustration.id}"
+      end
+
+      # BK-Treeに新しい画像の「類似判定用データ」を追加
+      unless SimilarityApiService.insert_fingerprint(@illustration)
+        raise BkTreeSyncError, "BK-Treeへの反映に失敗しました > #{@illustration.id}"
+      end
       
+      # BK-Tree反映成功後にDBへ保存
       @illustration.update_columns(
-        shot_at: @illustration.shot_at, 
+        shot_at: @illustration.shot_at,
         fingerprint: @illustration.fingerprint
       )
-      
-      # BK-Treeに新しい画像の「類似判定用データ」を追加（再ビルドするのではなく）
-      SimilarityApiService.insert_fingerprint(@illustration)
-      
+
       # サムネ生成・保存
       GenerateThumbnailJob.perform_later(illustration_id)
 
-    # デッドロック時
-    rescue ActiveRecord::Deadlocked => e
+    # リトライ実行（デッドロック時、BK-Tree反映失敗時）
+    rescue ActiveRecord::Deadlocked, BkTreeSyncError => e
       if executions >= Attempts
         Rails.logger.error "解析データ登録失敗 > #{@illustration.id}: \n#{e.message}"
       else
-        Rails.logger.warn "[#{executions}/#{Attempts}] デッドロック発生 > #{@illustration.id}: \n#{e.message}"
+        Rails.logger.warn "[#{executions}/#{Attempts}] リトライします > #{@illustration.id}: \n#{e.message}"
       end
       raise
 

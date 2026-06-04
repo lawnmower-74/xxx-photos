@@ -50,6 +50,11 @@ docker exec -it app rails c
 docker exec -it redis redis-cli flushall
 ```
 
+```bash
+# アクセス用（ http://192.168.0.x:3000 ）
+ipconfig
+```
+
 ## テスト用
 
 ### RSpec

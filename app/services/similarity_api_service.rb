@@ -77,7 +77,7 @@ class SimilarityApiService
   # 単一画像の「類似判定用データ」をBK-Treeに追加
   # ==========================================================
   def self.insert_fingerprint(illustration)
-    return if illustration.nil? || illustration.fingerprint.blank? || illustration.illustrator_id.blank?
+    return false if illustration.nil? || illustration.fingerprint.blank? || illustration.illustrator_id.blank?
 
     uri = URI.parse("#{BASE_URL}/insert_fingerprint")
 
@@ -95,11 +95,18 @@ class SimilarityApiService
 
     response = http.request(request)
 
-    unless response.is_a?(Net::HTTPSuccess)
+    if response.is_a?(Net::HTTPSuccess)
+      true
+    else
       Rails.logger.error "Go API エラー (insert_fingerprint): #{response.code} #{response.message}"
+      false
     end
-    
+
+  rescue Net::OpenTimeout, Net::ReadTimeout, Timeout::Error => e
+    Rails.logger.error "Go API タイムアウト (insert_fingerprint): #{e.message}"
+    false
   rescue => e
     Rails.logger.error "Go API への接続に失敗しました (insert_fingerprint): #{e.message}"
+    false
   end
 end
