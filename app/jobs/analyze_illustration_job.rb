@@ -7,8 +7,8 @@ class AnalyzeIllustrationJob < ApplicationJob
 
   # リトライ設定
   Attempts = 5
-  retry_on ActiveRecord::Deadlocked, wait: :exponentially_longer, attempts: Attempts
-  retry_on BkTreeSyncError, wait: :exponentially_longer, attempts: Attempts
+  retry_on ActiveRecord::Deadlocked, wait: :polynomially_longer, attempts: Attempts
+  retry_on BkTreeSyncError, wait: :polynomially_longer, attempts: Attempts
 
   def perform(illustration_id)
     @illustration = Illustration.find_by(id: illustration_id)
