@@ -15,6 +15,9 @@ RSpec.describe "対象: illustrations_controller", type: :request do
 
     # 開始前にテスト対象のデータを一通り削除
     before do
+      # テスト環境では Go API (similarity_api) が起動しないため BK-Tree 反映をスタブする
+      allow(SimilarityApiService).to receive(:insert_fingerprint).and_return(true)
+
       ActiveStorage::VariantRecord.delete_all
       ActiveStorage::Attachment.delete_all
       ActiveStorage::Blob.delete_all
