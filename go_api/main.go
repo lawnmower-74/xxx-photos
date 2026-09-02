@@ -143,7 +143,9 @@ func main() {
 	defer db.Close()
 
 	// 起動時に一度だけDBから全データを読み込んでBK-Treeを構築
-	buildAllTrees()
+	if err := buildAllTrees(); err != nil {
+		log.Fatalf("起動時のBK-Tree構築に失敗しました: %v", err)
+	}
 
 	// ルーティング
 	http.HandleFunc("/similarities", handleSimilarities)
@@ -203,11 +205,10 @@ func initDB() {
 // ==========================================
 // 全イラストレーターのBK-Treeをメモリ上に構築
 // ==========================================
-func buildAllTrees() {
+func buildAllTrees() error {
 	rows, err := db.Query("SELECT id, illustrator_id, fingerprint FROM illustrations WHERE fingerprint IS NOT NULL")
 	if err != nil {
-		log.Printf("BK-Tree構築クエリエラー: %v", err)
-		return
+		return fmt.Errorf("BK-Tree構築クエリエラー: %w", err)
 	}
 	defer rows.Close()
 
@@ -219,8 +220,7 @@ func buildAllTrees() {
 		var id, illustratorID int64
 		var fp int64
 		if err := rows.Scan(&id, &illustratorID, &fp); err != nil {
-			log.Printf("BK-Tree構築スキャンエラー: %v (id=%d, illustrator_id=%d)", err, id, illustratorID)
-			return
+			return fmt.Errorf("BK-Tree構築スキャンエラー (id=%d, illustrator_id=%d): %w", id, illustratorID, err)
 		}
 
 		// イラストレーターごとにBK-Treeのひな型を作成
@@ -240,8 +240,7 @@ func buildAllTrees() {
 
 	// ループが正常に終了したかを確認
 	if err := rows.Err(); err != nil {
-		log.Printf("BK-Tree構築の行走査エラー: %v", err)
-		return
+		return fmt.Errorf("BK-Tree構築の行走査エラー: %w", err)
 	}
 
 	// BK-Treeを更新（更新中は他からのBK-Treeへのアクセスをロック）
@@ -250,6 +249,7 @@ func buildAllTrees() {
 	dataMu.Unlock()
 
 	log.Printf("BK-Treeの構築が完了しました（全%d件）", count)
+	return nil
 }
 
 // ==========================================
@@ -358,8 +358,20 @@ func handleRebuild(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("BK-Treeの再構築リクエストを受信しました")
 
-	buildAllTrees()
-
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "再構築が完了しました"})
+
+	if err := buildAllTrees(); err != nil {
+		log.Printf("BK-Treeの再構築に失敗しました: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"status":  "再構築が完了しました",
+	})
 }

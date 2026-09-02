@@ -61,13 +61,22 @@ class SimilarityApiService
     request = Net::HTTP::Post.new(uri.request_uri)
     response = http.request(request)
 
-    if response.is_a?(Net::HTTPSuccess)
+    unless response.is_a?(Net::HTTPSuccess)
+      Rails.logger.error "Go API エラー (rebuild): #{response.code} #{response.message}"
+      return false
+    end
+
+    data = JSON.parse(response.body)
+    if data["success"]
       true
     else
-      Rails.logger.error "Go API エラー (rebuild): #{response.code} #{response.message}"
+      Rails.logger.error "Go API 再構築失敗 (rebuild): #{data['error']}"
       false
     end
 
+  rescue JSON::ParserError => e
+    Rails.logger.error "Go API レスポンス解析失敗 (rebuild): #{e.message}"
+    false
   rescue => e
     Rails.logger.error "Go API への接続に失敗しました (rebuild): #{e.message}"
     false
